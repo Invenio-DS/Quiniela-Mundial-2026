@@ -50,24 +50,55 @@ function limpiarCacheNavegador() {
 
 // ==================== VISTAS ====================
 async function mostrarBienvenida() {
+    // Obtener reglas desde Supabase (texto completo)
     let reglasTexto = "Cargando reglas...";
     const { data, error } = await _supabase.from('configuracion').select('valor').eq('clave', 'reglas_puntuacion').maybeSingle();
     if (!error && data) reglasTexto = data.valor;
 
+    // Configura las rutas de tus imágenes (cámbialas según donde las guardes en GitHub)
+    const fondoUrl = 'assets/fondo-mundial.jpg';   // Cambia por tu imagen de fondo
+    const logoUrl = 'assets/logo-mundial.png';     // Cambia por el logo del mundial
+
     document.getElementById('contenido').innerHTML = `
-        <div class="container" style="padding: 2rem;">
-            <div class="logo" style="text-align:center;">
-                <h1 style="font-size:2.5rem;">🏆 Mundial 2026</h1>
-                <p>Quiniela interactiva</p>
-            </div>
-            <div class="card">
-                <h2>📜 Reglas y puntuación</h2>
-                <div style="white-space: pre-line;">${reglasTexto.replace(/\n/g, '<br>')}</div>
-                <button id="btnContinuar" style="background:#f5c542; border:none; padding:12px 24px; border-radius:40px; margin-top:1rem; font-weight:bold;">Continuar →</button>
+        <div class="welcome-container" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}');">
+            <img src="${logoUrl}" alt="Logo Mundial" class="welcome-logo">
+            <h1 class="welcome-title">🏆 Quiniela Mundial 2026</h1>
+            <p class="welcome-title" style="font-size:1.2rem;">Pronostica y gana</p>
+            <button id="btnContinuar" style="background:#f5c542; border:none; padding:12px 32px; border-radius:40px; font-weight:bold; margin-top:2rem;">Continuar →</button>
+        </div>
+        <button id="btnAbrirReglas" class="btn-reglas">📜 Reglas y puntuación</button>
+    `;
+
+    // Evento para el botón continuar (sigue igual)
+    document.getElementById('btnContinuar').onclick = () => mostrarLogin();
+
+    // Evento para abrir modal de reglas
+    document.getElementById('btnAbrirReglas').onclick = () => mostrarReglas(reglasTexto);
+}
+
+// Nueva función para mostrar el modal de reglas
+function mostrarReglas(reglasTexto) {
+    const modalHtml = `
+        <div class="modal-overlay" id="modalReglasOverlay">
+            <div class="modal-content modal-reglas">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h3><i class="fas fa-scroll"></i> Reglas y puntos</h3>
+                    <button id="cerrarModalReglas" style="background:#c00; color:white; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer;">✕</button>
+                </div>
+                <div style="white-space: pre-line; line-height:1.5;">
+                    ${reglasTexto.replace(/\n/g, '<br>')}
+                </div>
             </div>
         </div>
     `;
-    document.getElementById('btnContinuar').onclick = () => mostrarLogin();
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('cerrarModalReglas').onclick = () => {
+        document.getElementById('modalReglasOverlay').remove();
+    };
+    // Cerrar al hacer clic fuera del contenido
+    document.getElementById('modalReglasOverlay').onclick = (e) => {
+        if (e.target === e.currentTarget) e.currentTarget.remove();
+    };
 }
 
 function mostrarLogin() {
@@ -257,7 +288,6 @@ async function renderGrupos() {
 // Mostrar todos los partidos de grupos (72) con opción admin
 async function mostrarPartidosPorGrupo() {
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
-    // Agrupar por grupo (obtener la letra del grupo desde el equipo local)
     const grupos = [...new Set(partidosGrupo.map(p => {
         const local = equiposCache.find(e => e.id === p.equipo_local_id);
         return local ? local.grupo : null;
@@ -270,12 +300,10 @@ async function mostrarPartidosPorGrupo() {
         </div>`;
 
     for (let g of grupos) {
-        // Filtrar partidos de este grupo
         const partidosG = partidosGrupo.filter(p => {
             const local = equiposCache.find(e => e.id === p.equipo_local_id);
             return local && local.grupo === g;
         });
-        // Ordenar por número de partido
         partidosG.sort((a,b) => a.numero - b.numero);
 
         contenido += `<div style="margin-bottom: 1.5rem;">
@@ -299,8 +327,7 @@ async function mostrarPartidosPorGrupo() {
                             <input type="number" id="real_local_${p.id}" placeholder="Local" style="width:70px;" value="${p.goles_local_real ?? ''}">
                             <span>-</span>
                             <input type="number" id="real_visit_${p.id}" placeholder="Visit" style="width:70px;" value="${p.goles_visitante_real ?? ''}">
-                            <label style="display:flex; align-items:center;"><input type="checkbox" id="penales_real_${p.id}" ${p.ganador_penaltis_real ? 'checked' : ''}> Penales</label>
-                            <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border:none; border-radius:30px; padding:6px 16px;">Guardar</button>
+                            <button class="guardar-resultado-admin" data-id="${p.id}" data-fase="${p.fase}" style="background:#f5c542; border:none; border-radius:30px; padding:6px 16px;">Guardar</button>
                           </div>`;
             }
             fila += `</div>`;
@@ -321,16 +348,25 @@ async function mostrarPartidosPorGrupo() {
         document.querySelectorAll('.guardar-resultado-admin').forEach(btn => {
             btn.onclick = async (e) => {
                 const pid = parseInt(btn.dataset.id);
+                const fase = btn.dataset.fase;
                 const localReal = parseInt(document.getElementById(`real_local_${pid}`).value);
                 const visitReal = parseInt(document.getElementById(`real_visit_${pid}`).value);
-                const penales = document.getElementById(`penales_real_${pid}`).checked;
                 if (isNaN(localReal) || isNaN(visitReal)) { alert("Ingresa números válidos"); return; }
-                const { error } = await _supabase.from('partidos').update({
+                
+                let updateData = {
                     goles_local_real: localReal,
                     goles_visitante_real: visitReal,
-                    ganador_penaltis_real: penales,
                     estado: 'finalizado'
-                }).eq('id', pid);
+                };
+                // Solo agregar campo penaltis si la fase no es 'grupos'
+                if (fase !== 'grupos') {
+                    const penales = document.getElementById(`penales_real_${pid}`)?.checked || false;
+                    updateData.ganador_penaltis_real = penales;
+                } else {
+                    updateData.ganador_penaltis_real = null;
+                }
+                
+                const { error } = await _supabase.from('partidos').update(updateData).eq('id', pid);
                 if (error) alert(error.message);
                 else {
                     alert("Resultado guardado. Actualizando...");
