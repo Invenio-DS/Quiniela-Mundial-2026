@@ -257,45 +257,66 @@ async function renderGrupos() {
 // Mostrar todos los partidos de grupos (72) con opción admin
 async function mostrarPartidosPorGrupo() {
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
-    // Agrupar por grupo
+    // Agrupar por grupo (obtener la letra del grupo desde el equipo local)
     const grupos = [...new Set(partidosGrupo.map(p => {
         const local = equiposCache.find(e => e.id === p.equipo_local_id);
         return local ? local.grupo : null;
-    }).filter(g => g))];
-    let contenido = `<div class="modal-content" style="max-width:800px;">
-        <div style="display:flex; justify-content:space-between;"><h3>📅 Partidos de Fase de Grupos</h3><button id="cerrarModal" style="background:#c00; color:white; border:none; border-radius:50%; width:30px;">X</button></div>`;
-    for (let g of grupos.sort()) {
+    }).filter(g => g))].sort();
+
+    let contenido = `<div class="modal-content" style="max-width: 1000px; width: 90vw;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h3><i class="fas fa-calendar-alt"></i> Partidos de Fase de Grupos</h3>
+            <button id="cerrarModal" style="background:#c00; color:white; border:none; border-radius:50%; width:36px; height:36px; font-size:1.2rem; cursor:pointer;">✕</button>
+        </div>`;
+
+    for (let g of grupos) {
+        // Filtrar partidos de este grupo
         const partidosG = partidosGrupo.filter(p => {
             const local = equiposCache.find(e => e.id === p.equipo_local_id);
             return local && local.grupo === g;
         });
-        contenido += `<h4>Grupo ${g}</h4><ul style="list-style:none;">`;
+        // Ordenar por número de partido
+        partidosG.sort((a,b) => a.numero - b.numero);
+
+        contenido += `<div style="margin-bottom: 1.5rem;">
+            <h4 style="background:#0a5c2e; color:white; padding:8px 12px; border-radius:20px; display:inline-block;">Grupo ${g}</h4>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:12px; margin-top:10px;">`;
+        
         for (let p of partidosG) {
             const localNom = getNombreEquipo(p.equipo_local_id);
             const visitNom = getNombreEquipo(p.equipo_visitante_id);
             const fecha = new Date(p.fecha_hora).toLocaleString();
             const resultado = (p.goles_local_real !== null && p.goles_visitante_real !== null) ? `${p.goles_local_real} - ${p.goles_visitante_real}` : 'Sin jugar';
-            let fila = `<li><strong>${localNom} vs ${visitNom}</strong><br>📅 ${fecha}<br>🏆 Resultado: ${resultado}`;
+            const numeroPartido = p.numero;
+            
+            let fila = `<div style="background:#f8fafc; border-radius:16px; padding:12px; border-left:6px solid #f5c542;">
+                <div><strong>Partido #${numeroPartido}</strong> — ${localNom} vs ${visitNom}</div>
+                <div style="font-size:0.8rem; color:#555;">📅 ${fecha}</div>
+                <div style="font-size:1rem; margin-top:5px;">🏆 Resultado: <strong>${resultado}</strong></div>`;
+            
             if (currentUserRol === 'admin') {
-                fila += `<br><div style="display:flex; gap:8px; margin-top:5px;">
-                            <input type="number" id="real_local_${p.id}" placeholder="Local" style="width:60px;" value="${p.goles_local_real ?? ''}">
-                            - <input type="number" id="real_visit_${p.id}" placeholder="Visit" style="width:60px;" value="${p.goles_visitante_real ?? ''}">
-                            <label><input type="checkbox" id="penales_real_${p.id}" ${p.ganador_penaltis_real ? 'checked' : ''}> Penales</label>
-                            <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border:none; border-radius:20px; padding:4px 12px;">Guardar</button>
+                fila += `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
+                            <input type="number" id="real_local_${p.id}" placeholder="Local" style="width:70px;" value="${p.goles_local_real ?? ''}">
+                            <span>-</span>
+                            <input type="number" id="real_visit_${p.id}" placeholder="Visit" style="width:70px;" value="${p.goles_visitante_real ?? ''}">
+                            <label style="display:flex; align-items:center;"><input type="checkbox" id="penales_real_${p.id}" ${p.ganador_penaltis_real ? 'checked' : ''}> Penales</label>
+                            <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border:none; border-radius:30px; padding:6px 16px;">Guardar</button>
                           </div>`;
             }
-            fila += `</li><hr>`;
+            fila += `</div>`;
             contenido += fila;
         }
-        contenido += `</ul>`;
+        contenido += `</div></div>`;
     }
     contenido += `</div>`;
+    
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = contenido;
     document.body.appendChild(modal);
+    
     document.getElementById('cerrarModal').onclick = () => modal.remove();
-
+    
     if (currentUserRol === 'admin') {
         document.querySelectorAll('.guardar-resultado-admin').forEach(btn => {
             btn.onclick = async (e) => {
@@ -303,7 +324,7 @@ async function mostrarPartidosPorGrupo() {
                 const localReal = parseInt(document.getElementById(`real_local_${pid}`).value);
                 const visitReal = parseInt(document.getElementById(`real_visit_${pid}`).value);
                 const penales = document.getElementById(`penales_real_${pid}`).checked;
-                if (isNaN(localReal) || isNaN(visitReal)) { alert("Ingresa números"); return; }
+                if (isNaN(localReal) || isNaN(visitReal)) { alert("Ingresa números válidos"); return; }
                 const { error } = await _supabase.from('partidos').update({
                     goles_local_real: localReal,
                     goles_visitante_real: visitReal,
@@ -316,7 +337,7 @@ async function mostrarPartidosPorGrupo() {
                     await cargarPartidos();
                     await renderGrupos();
                     modal.remove();
-                    mostrarPartidosPorGrupo(); // refrescar modal
+                    mostrarPartidosPorGrupo(); // refrescar modal con datos actualizados
                 }
             };
         });
