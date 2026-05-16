@@ -58,8 +58,8 @@ async function mostrarBienvenida() {
     // Si tienes un fondo y logo en tu repositorio, descomenta las siguientes líneas
     // y pon las rutas correctas (ej: 'assets/fondo-mundial.jpg', 'assets/logo-mundial.png')
     const usarImagenes = true; // Cambia a true si subiste tus imágenes a la carpeta assets
-    const fondoUrl = usarImagenes ? 'fondo_mundial.jpg' : '';
-    const logoUrl = usarImagenes ? 'logo_mundial_2026.jpg' : '';
+    const fondoUrl = usarImagenes ? 'assets/fondo_mundial.jpg' : '';
+    const logoUrl = usarImagenes ? 'assets/logo_mundial_2026.jpg' : '';
 
     // Estilo de fondo (si no hay imagen, se usa un degradado)
     const backgroundStyle = usarImagenes
