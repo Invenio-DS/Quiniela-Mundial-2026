@@ -1,6 +1,6 @@
 ﻿// ==================== CONFIGURACIÓN ====================
 // REEMPLAZA ESTOS VALORES CON LOS TUYOS
-const SUPABASE_URL = 'https://tylnpyuerchhkrinpixn.supabase.co/';
+const SUPABASE_URL = 'https://tylnpyuerchhkrinpixn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR5bG5weXVlcmNoaGtyaW5waXhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NDAzNDQsImV4cCI6MjA5NDUxNjM0NH0.ZnCQmrFNXrJuiqxQEQSTxtPSzRKBSjtzVoTIbB0evao';
 
 // Crear cliente de forma segura
