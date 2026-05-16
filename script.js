@@ -584,7 +584,40 @@ function renderGoleador(yaVoto, nombreActual) {
 // ==================== ADMIN ====================
 function renderAdmin() {
     const container = document.getElementById('admin');
-    container.innerHTML = `<p>Panel de administrador. Usa el botón "Ver partidos por grupo" en la pestaña Grupos para cargar resultados.</p>`;
+    container.innerHTML = `
+        <div style="background:#f8fafc; padding:20px; border-radius:24px;">
+            <h3><i class="fas fa-cogs"></i> Configuración del sistema</h3>
+            <hr style="margin:10px 0;">
+            <h4>📜 Reglas y puntuación</h4>
+            <textarea id="reglasTexto" rows="15" style="width:100%; font-family:monospace; padding:8px;"></textarea>
+            <br>
+            <button id="btnGuardarReglas" class="btn-guardar" style="margin-top:10px;">Guardar cambios</button>
+            <div id="msgReglas" style="margin-top:10px;"></div>
+        </div>
+    `;
+    
+    // Cargar el texto actual
+    _supabase.from('configuracion').select('valor').eq('clave', 'reglas_puntuacion').single()
+        .then(({ data, error }) => {
+            if (data) document.getElementById('reglasTexto').value = data.valor;
+        });
+    
+    // Guardar cambios
+    document.getElementById('btnGuardarReglas').onclick = async () => {
+        const nuevoTexto = document.getElementById('reglasTexto').value;
+        const { error } = await _supabase.from('configuracion')
+            .update({ valor: nuevoTexto })
+            .eq('clave', 'reglas_puntuacion');
+        const msgDiv = document.getElementById('msgReglas');
+        if (error) {
+            msgDiv.innerHTML = '<span style="color:red;">❌ Error al guardar.</span>';
+            console.error(error);
+        } else {
+            msgDiv.innerHTML = '<span style="color:green;">✅ Reglas actualizadas correctamente.</span>';
+            setTimeout(() => { msgDiv.innerHTML = ''; }, 3000);
+        }
+    };
+}
 }
 
 // ==================== RANKING ====================
