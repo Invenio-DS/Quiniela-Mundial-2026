@@ -1,0 +1,286 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #0b2b1f 0%, #1a4a2f 100%);
+    min-height: 100vh;
+    padding: 20px;
+    /* Imagen de fondo opcional (puedes poner tu propia URL) */
+    background-image: url('https://www.transparenttextures.com/patterns/football.png');
+    background-blend-mode: overlay;
+}
+
+/* Contenedor principal */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.92);
+    border-radius: 32px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    overflow: hidden;
+    backdrop-filter: blur(2px);
+}
+
+/* Encabezado con navegación */
+.header {
+    background: #0a2a1f;
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.logo h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.logo span {
+    color: #f5c542;
+}
+
+.user-info {
+    background: #1e4a2f;
+    padding: 8px 16px;
+    border-radius: 40px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    font-weight: 600;
+}
+
+.user-info i {
+    margin-right: 8px;
+    color: #f5c542;
+}
+
+.btn-ranking {
+    background: #f5c542;
+    color: #0a2a1f;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Navegación de pestañas */
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    background: #e9ecef;
+    border-bottom: 2px solid #cbd5e1;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 14px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #2d3e2b;
+}
+
+.tab-btn i {
+    font-size: 1.2rem;
+}
+
+.tab-btn.active {
+    background: white;
+    border-bottom: 3px solid #f5c542;
+    color: #0a5c2e;
+}
+
+.tab-pane {
+    display: none;
+    padding: 2rem;
+    animation: fade 0.3s;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fade {
+    from { opacity: 0; transform: translateY(10px);}
+    to { opacity: 1; transform: translateY(0);}
+}
+
+/* Tarjetas de grupos */
+.grupos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.card-grupo {
+    background: #f8fafc;
+    border-radius: 24px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-left: 8px solid #f5c542;
+}
+
+.card-grupo h3 {
+    margin-bottom: 12px;
+    color: #0b2b1f;
+}
+
+.tabla-posiciones {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-posiciones th, .tabla-posiciones td {
+    padding: 8px 4px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Partidos */
+.partidos-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.partido-item {
+    background: white;
+    border-radius: 20px;
+    padding: 12px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.info-partido {
+    flex: 2;
+    min-width: 180px;
+}
+
+.fecha-partido {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.equipos {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin: 4px 0;
+}
+
+.pronostico-inputs {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.pronostico-inputs input {
+    width: 60px;
+    padding: 8px;
+    text-align: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+}
+
+.pronostico-inputs label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85rem;
+}
+
+.btn-guardar {
+    background: #f5c542;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-guardar:hover {
+    background: #e0b032;
+}
+
+.resultado-real {
+    background: #e6f7e6;
+    border-radius: 16px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Goleador */
+.goleador-area {
+    background: #f1f5f9;
+    border-radius: 24px;
+    padding: 20px;
+    text-align: center;
+}
+
+#goleador-input {
+    padding: 12px;
+    width: 100%;
+    max-width: 300px;
+    border-radius: 40px;
+    border: 1px solid #cbd5e1;
+    margin: 10px auto;
+}
+
+.btn-goleador {
+    background: #0a5c2e;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 40px;
+    cursor: pointer;
+}
+
+/* Ranking */
+.ranking-lista {
+    list-style: none;
+}
+
+.ranking-lista li {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Admin panel */
+.admin-panel {
+    background: #fff8e7;
+    padding: 20px;
+    border-radius: 24px;
+    margin-top: 20px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    body { padding: 10px; }
+    .tab-btn { padding: 10px 12px; font-size: 0.8rem; }
+    .partido-item { flex-direction: column; align-items: stretch; gap: 12px; }
+    .pronostico-inputs { justify-content: center; }
+    .header { flex-direction: column; text-align: center; }
+}
