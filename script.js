@@ -214,44 +214,59 @@ async function mostrarDashboard() {
 // ==================== FUNCIONES DE RENDER ====================
 async function renderGrupos() {
     const container = document.getElementById('grupos');
-    const grupos = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-    let html = '<div class="grupos-grid">';
+    const grupos = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+
+    // Obtener todos los partidos que ya tienen resultado real (goles no nulos)
+    const partidosConResultado = partidosCache.filter(p => p.goles_local_real !== null && p.goles_visitante_real !== null && p.fase === 'grupos');
+
+    let html = '<div style="text-align:right; margin-bottom:15px;"><button id="btnVerPartidosGrupo" class="btn-ranking" style="background:#0a5c2e; color:white;"><i class="fas fa-calendar-alt"></i> Ver partidos por grupo</button></div>';
+    html += '<div class="grupos-grid">';
+
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
-        html += `<div class="card-grupo"><h3>Grupo ${g}</h3><table class="tabla-posiciones">`;
-        equiposGrupo.forEach(eq => { html += `<tr><td>${eq.nombre}</td><td>${eq.confederacion}</td></tr>`; });
-        html += `</table><div id="simulacion-${g}">Cargando...</div></div>`;
+        // Calcular estadísticas reales del grupo
+        let stats = [];
+        for (let equipo of equiposGrupo) {
+            // Partidos donde el equipo es local o visitante
+            const partidosLocal = partidosConResultado.filter(p => p.equipo_local_id === equipo.id);
+            const partidosVisit = partidosConResultado.filter(p => p.equipo_visitante_id === equipo.id);
+            let pj = 0, pg = 0, pe = 0, pp = 0, gf = 0, gc = 0;
+            for (let p of partidosLocal) {
+                pj++;
+                gf += p.goles_local_real;
+                gc += p.goles_visitante_real;
+                if (p.goles_local_real > p.goles_visitante_real) pg++;
+                else if (p.goles_local_real === p.goles_visitante_real) pe++;
+                else pp++;
+            }
+            for (let p of partidosVisit) {
+                pj++;
+                gf += p.goles_visitante_real;
+                gc += p.goles_local_real;
+                if (p.goles_visitante_real > p.goles_local_real) pg++;
+                else if (p.goles_visitante_real === p.goles_local_real) pe++;
+                else pp++;
+            }
+            const puntos = pg * 3 + pe;
+            const dif = gf - gc;
+            stats.push({ equipo: equipo.nombre, pj, pg, pe, pp, gf, gc, dif, puntos });
+        }
+        // Ordenar por puntos, dif, gf
+        stats.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
+
+        html += `<div class="card-grupo"><h3>Grupo ${g}</h3><table class="tabla-posiciones" style="width:100%; font-size:0.8rem;">`;
+        html += `<tr><th>Equipo</th><th>JJ</th><th>JG</th><th>JE</th><th>JP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr>`;
+        stats.forEach(s => {
+            html += `<tr><td>${s.equipo}</td><td>${s.pj}</td><td>${s.pg}</td><td>${s.pe}</td><td>${s.pp}</td><td>${s.gf}</td><td>${s.gc}</td><td>${s.dif}</td><td><b>${s.puntos}</b></td></tr>`;
+        });
+        html += `</table></div>`;
     }
     html += '</div>';
     container.innerHTML = html;
-    for (let g of grupos) {
-        const posiciones = await simularPosicionesGrupo(g, currentUser.id);
-        document.getElementById(`simulacion-${g}`).innerHTML = posiciones.length ? `<ol>${posiciones.map(p => `<li>${p.nombre} (${p.puntos} pts)</li>`).join('')}</ol>` : 'Sin pronósticos';
-    }
-}
 
-async function simularPosicionesGrupo(grupoLetra, usuarioId) {
-    const equiposGrupo = equiposCache.filter(eq => eq.grupo === grupoLetra);
-    const idsEquipos = equiposGrupo.map(e => e.id);
-    const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && idsEquipos.includes(p.equipo_local_id));
-    const { data: pronos } = await _supabase.from('pronosticos_partidos').select('*').eq('usuario_id', usuarioId).in('partido_id', partidosGrupo.map(p => p.id));
-    if (!pronos || pronos.length === 0) return [];
-    let tabla = equiposGrupo.map(eq => ({ id: eq.id, nombre: eq.nombre, puntos: 0, gf: 0, gc: 0 }));
-    for (let partido of partidosGrupo) {
-        const prono = pronos.find(pr => pr.partido_id === partido.id);
-        if (!prono) continue;
-        const local = tabla.find(t => t.id === partido.equipo_local_id);
-        const visit = tabla.find(t => t.id === partido.equipo_visitante_id);
-        if (prono.goles_local > prono.goles_visitante) local.puntos += 3;
-        else if (prono.goles_local < prono.goles_visitante) visit.puntos += 3;
-        else { local.puntos += 1; visit.puntos += 1; }
-        local.gf += prono.goles_local; local.gc += prono.goles_visitante;
-        visit.gf += prono.goles_visitante; visit.gc += prono.goles_local;
-    }
-    tabla.sort((a,b) => b.puntos - a.puntos || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
-    return tabla;
+    // Asignar evento al botón
+    document.getElementById('btnVerPartidosGrupo').onclick = () => mostrarPartidosPorGrupo();
 }
-
 async function renderPartidos() {
     const container = document.getElementById('partidos');
     let html = '<h3>Fase de Grupos</h3><div class="partidos-lista">';
@@ -277,21 +292,81 @@ async function renderPartidos() {
     });
 }
 
-async function generarCardPartido(partido) {
-    const { data: prono } = await _supabase.from('pronosticos_partidos').select('*').eq('usuario_id', currentUser.id).eq('partido_id', partido.id).maybeSingle();
-    const gLocal = prono ? prono.goles_local : '';
-    const gVisit = prono ? prono.goles_visitante : '';
-    const penaltis = prono ? prono.penaltis : false;
-    return `
-        <div class="partido-item">
-            <div>${new Date(partido.fecha_hora).toLocaleDateString()}<br><strong>${getNombreEquipo(partido.equipo_local_id)} vs ${getNombreEquipo(partido.equipo_visitante_id)}</strong><br>Real: ${partido.goles_local_real ?? '?'} - ${partido.goles_visitante_real ?? '?'}</div>
-            <div class="pronostico-inputs">
-                <input type="number" id="gol_local_${partido.id}" value="${gLocal}" style="width:70px"> - <input type="number" id="gol_visit_${partido.id}" value="${gVisit}" style="width:70px">
-                <label><input type="checkbox" id="penaltis_${partido.id}" ${penaltis ? 'checked' : ''}> Penales</label>
-                <button class="btn-guardar btn-guardar-prono" data-partido-id="${partido.id}">Guardar</button>
-            </div>
-        </div>
-    `;
+async function mostrarPartidosPorGrupo() {
+    // Obtener todos los partidos de grupos (sin importar si tienen resultado)
+    const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
+    // Agrupar por grupo
+    const grupos = [...new Set(partidosGrupo.map(p => {
+        const local = equiposCache.find(e => e.id === p.equipo_local_id);
+        return local ? local.grupo : null;
+    }).filter(g => g))];
+    let contenidoModal = `<div style="background:white; border-radius:24px; max-width:800px; margin:auto; padding:1rem; max-height:80vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between;"><h3>📅 Partidos de Fase de Grupos</h3><button id="cerrarModalPartidos" style="background:#c00; color:white; border:none; border-radius:50%; width:30px;">X</button></div>`;
+    for (let g of grupos.sort()) {
+        const partidosGrupoG = partidosGrupo.filter(p => {
+            const local = equiposCache.find(e => e.id === p.equipo_local_id);
+            return local && local.grupo === g;
+        });
+        contenidoModal += `<h4>Grupo ${g}</h4><ul style="list-style:none; padding-left:0;">`;
+        for (let p of partidosGrupoG) {
+            const local = getNombreEquipo(p.equipo_local_id);
+            const visit = getNombreEquipo(p.equipo_visitante_id);
+            const fecha = new Date(p.fecha_hora).toLocaleString();
+            const resultadoReal = (p.goles_local_real !== null && p.goles_visitante_real !== null) ? `${p.goles_local_real} - ${p.goles_visitante_real}` : 'Sin jugar';
+            // Si el usuario es admin, mostramos inputs para cargar resultado; si no, solo texto
+            let fila = `<li><strong>${local} vs ${visit}</strong><br>📅 ${fecha}<br>🏆 Resultado real: ${resultadoReal}`;
+            if (currentUserRol === 'admin') {
+                fila += `<br><div style="display:flex; gap:8px; margin-top:5px;">
+                            <input type="number" id="real_local_${p.id}" placeholder="Local" style="width:60px;" value="${p.goles_local_real ?? ''}">
+                            - <input type="number" id="real_visit_${p.id}" placeholder="Visit" style="width:60px;" value="${p.goles_visitante_real ?? ''}">
+                            <label><input type="checkbox" id="penales_real_${p.id}" ${p.ganador_penaltis_real ? 'checked' : ''}> Penales</label>
+                            <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border:none; border-radius:20px; padding:4px 12px;">Guardar</button>
+                          </div>`;
+            }
+            fila += `</li><hr>`;
+            contenidoModal += fila;
+        }
+        contenidoModal += `</ul>`;
+    }
+    contenidoModal += `</div>`;
+
+    const modal = document.createElement('div');
+    modal.id = 'modalPartidosGrupo';
+    modal.style.position = 'fixed'; modal.style.top = '0'; modal.style.left = '0'; modal.style.width = '100%'; modal.style.height = '100%'; modal.style.background = 'rgba(0,0,0,0.7)'; modal.style.display = 'flex'; modal.style.alignItems = 'center'; modal.style.justifyContent = 'center'; modal.style.zIndex = '1000';
+    modal.innerHTML = contenidoModal;
+    document.body.appendChild(modal);
+
+    // Cerrar modal
+    document.getElementById('cerrarModalPartidos').onclick = () => modal.remove();
+
+    // Si es admin, asignar eventos a los botones de guardar resultado
+    if (currentUserRol === 'admin') {
+        document.querySelectorAll('.guardar-resultado-admin').forEach(btn => {
+            btn.onclick = async (e) => {
+                const partidoId = parseInt(btn.dataset.id);
+                const localReal = parseInt(document.getElementById(`real_local_${partidoId}`).value);
+                const visitReal = parseInt(document.getElementById(`real_visit_${partidoId}`).value);
+                const penales = document.getElementById(`penales_real_${partidoId}`).checked;
+                if (isNaN(localReal) || isNaN(visitReal)) { alert("Ingresa números"); return; }
+                // Actualizar en Supabase
+                const { error } = await _supabase.from('partidos').update({
+                    goles_local_real: localReal,
+                    goles_visitante_real: visitReal,
+                    ganador_penaltis_real: penales,
+                    estado: 'finalizado'
+                }).eq('id', partidoId);
+                if (error) alert(error.message);
+                else {
+                    alert("Resultado guardado. Actualizando tabla de grupos...");
+                    // Recargar la pestaña grupos para actualizar estadísticas
+                    await renderGrupos();
+                    // Cerrar modal y reabrir para ver cambios
+                    modal.remove();
+                    mostrarPartidosPorGrupo();
+                }
+            };
+        });
+    }
 }
 
 async function renderMejoresTerceros() {
