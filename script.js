@@ -54,46 +54,34 @@ async function mostrarBienvenida() {
     const { data, error } = await _supabase.from('configuracion').select('valor').eq('clave', 'reglas_puntuacion').maybeSingle();
     if (!error && data) reglasTexto = data.valor;
 
-    // Si no tienes imágenes en assets, puedes usar solo el degradado. Cambia la URL si tienes imágenes.
-    const fondoUrl = 'https://www.transparenttextures.com/patterns/football.png'; // patrón sutil
-    const logoUrl = 'https://cdn-icons-png.flaticon.com/512/42/42596.png'; // ícono de trofeo
+    // ===== CONFIGURA AQUÍ TUS IMÁGENES (opcional) =====
+    // Si tienes un fondo y logo en tu repositorio, descomenta las siguientes líneas
+    // y pon las rutas correctas (ej: 'assets/fondo-mundial.jpg', 'assets/logo-mundial.png')
+    const usarImagenes = false; // Cambia a true si subiste tus imágenes a la carpeta assets
+    const fondoUrl = usarImagenes ? 'fondo_mundial.jpg' : '';
+    const logoUrl = usarImagenes ? 'logo_mundial_2026.jpg' : '';
+
+    // Estilo de fondo (si no hay imagen, se usa un degradado)
+    const backgroundStyle = usarImagenes
+        ? `background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}'); background-size: cover; background-position: center;`
+        : 'background: linear-gradient(135deg, #0b2b1f 0%, #1a4a2f 100%);';
+
+    const logoHtml = usarImagenes
+        ? `<img src="${logoUrl}" alt="Logo Mundial" class="welcome-logo" style="max-width: 200px;">`
+        : `<i class="fas fa-futbol" style="font-size: 4rem; color: #f5c542; margin-bottom: 1rem;"></i>`;
 
     document.getElementById('contenido').innerHTML = `
-        <div class="welcome-container" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}');">
-            <img src="${logoUrl}" alt="Logo Mundial" class="welcome-logo">
+        <div class="welcome-container" style="${backgroundStyle}">
+            ${logoHtml}
             <h1 class="welcome-title">🏆 Quiniela Mundial 2026</h1>
-            <p class="welcome-title" style="font-size:1.2rem;">Pronostica y gana</p>
+            <p class="welcome-title" style="font-size:1.2rem;">Bienvenido a tus Pronosticos del Mundial 2026</p>
             <button id="btnContinuar" style="background:#f5c542; border:none; padding:12px 32px; border-radius:40px; font-weight:bold; margin-top:2rem;">Continuar →</button>
         </div>
-        <button id="btnAbrirReglas" class="btn-reglas">📜 Reglas y puntuación</button>
+        <button id="btnAbrirReglas" class="btn-reglas">📜 Reglas y Puntuación</button>
     `;
     document.getElementById('btnContinuar').onclick = () => mostrarLogin();
     document.getElementById('btnAbrirReglas').onclick = () => mostrarReglas(reglasTexto);
 }
-
-function mostrarReglas(reglasTexto) {
-    const modalHtml = `
-        <div class="modal-overlay" id="modalReglasOverlay">
-            <div class="modal-content modal-reglas">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <h3><i class="fas fa-scroll"></i> Reglas y puntos</h3>
-                    <button id="cerrarModalReglas" style="background:#c00; color:white; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer;">✕</button>
-                </div>
-                <div style="white-space: pre-line; line-height:1.5;">
-                    ${reglasTexto.replace(/\n/g, '<br>')}
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.getElementById('cerrarModalReglas').onclick = () => {
-        document.getElementById('modalReglasOverlay').remove();
-    };
-    document.getElementById('modalReglasOverlay').onclick = (e) => {
-        if (e.target === e.currentTarget) e.currentTarget.remove();
-    };
-}
-
 function mostrarLogin() {
     document.getElementById('contenido').innerHTML = `
         <div class="container" style="max-width: 500px; margin: 40px auto;">
