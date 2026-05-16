@@ -56,8 +56,8 @@ async function mostrarBienvenida() {
     if (!error && data) reglasTexto = data.valor;
 
     // Configura las rutas de tus imágenes (cámbialas según donde las guardes en GitHub)
-    const fondoUrl = 'assets/fondo-mundial.jpg';   // Cambia por tu imagen de fondo
-    const logoUrl = 'assets/logo-mundial.png';     // Cambia por el logo del mundial
+    const fondoUrl = 'fondo_mundial.jpg';   // Cambia por tu imagen de fondo
+    const logoUrl = 'logo_mundial_2026.png';     // Cambia por el logo del mundial
 
     document.getElementById('contenido').innerHTML = `
         <div class="welcome-container" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}');">
