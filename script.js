@@ -50,39 +50,33 @@ function limpiarCacheNavegador() {
 
 // ==================== VISTAS ====================
 async function mostrarBienvenida() {
-    // Obtener reglas desde Supabase (texto completo)
     let reglasTexto = "Cargando reglas...";
     const { data, error } = await _supabase.from('configuracion').select('valor').eq('clave', 'reglas_puntuacion').maybeSingle();
     if (!error && data) reglasTexto = data.valor;
 
-    // Configura las rutas de tus imágenes (cámbialas según donde las guardes en GitHub)
-    const fondoUrl = 'fondo_mundial.jpg';   // Cambia por tu imagen de fondo
-    const logoUrl = 'logo_mundial_2026.jpg';     // Cambia por el logo del mundial
+    // Si no tienes imágenes en assets, puedes usar solo el degradado. Cambia la URL si tienes imágenes.
+    const fondoUrl = 'https://www.transparenttextures.com/patterns/football.png'; // patrón sutil
+    const logoUrl = 'https://cdn-icons-png.flaticon.com/512/42/42596.png'; // ícono de trofeo
 
     document.getElementById('contenido').innerHTML = `
         <div class="welcome-container" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}');">
             <img src="${logoUrl}" alt="Logo Mundial" class="welcome-logo">
-            <h1 class="welcome-title">🏆 Quiniela Mundial USA - MEX - CAN 2026</h1>
-            <p class="welcome-title" style="font-size:1.9rem;">BIENVENIDO...PRONOSTICA Y GANA</p>
+            <h1 class="welcome-title">🏆 Quiniela Mundial 2026</h1>
+            <p class="welcome-title" style="font-size:1.2rem;">Pronostica y gana</p>
             <button id="btnContinuar" style="background:#f5c542; border:none; padding:12px 32px; border-radius:40px; font-weight:bold; margin-top:2rem;">Continuar →</button>
         </div>
         <button id="btnAbrirReglas" class="btn-reglas">📜 Reglas y puntuación</button>
     `;
-
-    // Evento para el botón continuar (sigue igual)
     document.getElementById('btnContinuar').onclick = () => mostrarLogin();
-
-    // Evento para abrir modal de reglas
     document.getElementById('btnAbrirReglas').onclick = () => mostrarReglas(reglasTexto);
 }
 
-// Nueva función para mostrar el modal de reglas
 function mostrarReglas(reglasTexto) {
     const modalHtml = `
         <div class="modal-overlay" id="modalReglasOverlay">
             <div class="modal-content modal-reglas">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <h3><i class="fas fa-scroll"></i> Reglas y Puntos</h3>
+                    <h3><i class="fas fa-scroll"></i> Reglas y puntos</h3>
                     <button id="cerrarModalReglas" style="background:#c00; color:white; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer;">✕</button>
                 </div>
                 <div style="white-space: pre-line; line-height:1.5;">
@@ -95,7 +89,6 @@ function mostrarReglas(reglasTexto) {
     document.getElementById('cerrarModalReglas').onclick = () => {
         document.getElementById('modalReglasOverlay').remove();
     };
-    // Cerrar al hacer clic fuera del contenido
     document.getElementById('modalReglasOverlay').onclick = (e) => {
         if (e.target === e.currentTarget) e.currentTarget.remove();
     };
@@ -126,6 +119,7 @@ function mostrarLogin() {
             </div>
         </div>
     `;
+
     document.getElementById('btnLoginTab').onclick = () => {
         document.getElementById('loginForm').style.display = 'block';
         document.getElementById('registroForm').style.display = 'none';
@@ -178,7 +172,7 @@ async function cargarPerfilUsuario() {
     }
 }
 
-// ==================== DASHBOARD PRINCIPAL ====================
+// ==================== DASHBOARD ====================
 async function mostrarDashboard() {
     if (equiposCache.length === 0) await cargarEquipos();
     if (partidosCache.length === 0) await cargarPartidos();
@@ -238,7 +232,6 @@ async function mostrarDashboard() {
 async function renderGrupos() {
     const container = document.getElementById('grupos');
     const grupos = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-    // Partidos de grupos con resultado real
     const partidosConResultado = partidosCache.filter(p => p.fase === 'grupos' && p.goles_local_real !== null && p.goles_visitante_real !== null);
 
     let html = `<div style="display:flex; gap:10px; margin-bottom:15px;">
@@ -285,142 +278,105 @@ async function renderGrupos() {
     document.getElementById('btnMejoresTerceros').onclick = () => mostrarMejoresTerceros();
 }
 
-// Mostrar todos los partidos de grupos (72) con opción admin
+// Mostrar todos los partidos de grupos con opción admin (guardado de resultados reales)
 async function mostrarPartidosPorGrupo() {
-    // Recargar datos frescos para asegurar resultados actualizados
-    await cargarPartidos();
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
-    
-    // Agrupar por grupo
     const grupos = [...new Set(partidosGrupo.map(p => {
         const local = equiposCache.find(e => e.id === p.equipo_local_id);
         return local ? local.grupo : null;
     }).filter(g => g))].sort();
 
-    // Crear modal con header sticky
+    // Modal con sticky para el botón cerrar
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 1000px; width: 90vw; padding: 0; display: flex; flex-direction: column;">
-            <div style="position: sticky; top: 0; background: white; padding: 1rem; border-bottom: 2px solid #ccc; border-radius: 24px 24px 0 0; z-index: 10; display: flex; justify-content: space-between; align-items: center;">
+        <div class="modal-content" style="max-width: 1000px; width: 90vw; position: relative; display: flex; flex-direction: column; padding: 0;">
+            <div style="position: sticky; top: 0; background: white; padding: 1rem; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center; z-index: 10; border-radius: 24px 24px 0 0;">
                 <h3><i class="fas fa-calendar-alt"></i> Partidos de Fase de Grupos</h3>
-                <button id="cerrarModal" style="background:#c00; color:white; border:none; border-radius:50%; width:36px; height:36px; font-size:1.2rem; cursor:pointer;">✕</button>
+                <button id="cerrarModal" style="background:#c00; color:white; border:none; border-radius:50%; width:36px; height:36px; cursor:pointer;">✕</button>
             </div>
-            <div id="modalPartidosContenido" style="padding: 1rem; overflow-y: auto; max-height: 70vh;">
-                <!-- Aquí se cargarán dinámicamente los partidos -->
-            </div>
+            <div id="modalPartidosContenido" style="padding: 1rem; overflow-y: auto;"></div>
         </div>
     `;
     document.body.appendChild(modal);
-    
+    document.getElementById('cerrarModal').onclick = () => modal.remove();
+
     const modalContenido = document.getElementById('modalPartidosContenido');
-    
-    // Función para renderizar partidos dentro del modal
+
     async function renderizarPartidosEnModal() {
-        // Recargar partidos actualizados
         await cargarPartidos();
         const partidosActualizados = partidosCache.filter(p => p.fase === 'grupos');
-        
         let html = '';
         for (let g of grupos) {
             const partidosG = partidosActualizados.filter(p => {
                 const local = equiposCache.find(e => e.id === p.equipo_local_id);
                 return local && local.grupo === g;
             }).sort((a,b) => a.numero - b.numero);
-            
-            html += `<div style="margin-bottom: 2rem;">
+            html += `<div style="margin-bottom: 1.5rem;">
                         <h4 style="background:#0a5c2e; color:white; padding:8px 12px; border-radius:20px; display:inline-block;">Grupo ${g}</h4>
-                        <div style="display:flex; flex-direction: column; gap: 12px; margin-top: 10px;">`;
-            
+                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:12px; margin-top:10px;">`;
             for (let p of partidosG) {
                 const localNom = getNombreEquipo(p.equipo_local_id);
                 const visitNom = getNombreEquipo(p.equipo_visitante_id);
-                const fechaHora = new Date(p.fecha_hora).toLocaleString();
-                const resultadoActual = (p.goles_local_real !== null && p.goles_visitante_real !== null) 
-                    ? `${p.goles_local_real} - ${p.goles_visitante_real}` 
-                    : 'Sin jugar';
-                
-                html += `
-                    <div style="background:#f8fafc; border-radius:16px; padding: 12px; border-left: 6px solid #f5c542;">
-                        <div style="font-weight: bold; margin-bottom: 5px;">Partido #${p.numero} - ${fechaHora}</div>
-                        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
-                            <div style="min-width: 120px; font-weight: 500;">${localNom}</div>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" id="real_local_${p.id}" placeholder="Local" style="width: 70px; text-align: center;" value="${p.goles_local_real ?? ''}">
-                                <span>-</span>
-                                <input type="number" id="real_visit_${p.id}" placeholder="Visit" style="width: 70px; text-align: center;" value="${p.goles_visitante_real ?? ''}">
-                                <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border: none; border-radius: 30px; padding: 6px 16px;">Guardar</button>
-                            </div>
-                            <div style="min-width: 120px; font-weight: 500; text-align: right;">${visitNom}</div>
-                        </div>
-                        <div style="margin-top: 8px; font-size: 0.8rem; color: #555;">Resultado actual: <strong>${resultadoActual}</strong></div>
-                        <div id="msg-${p.id}" style="font-size: 0.7rem; margin-top: 5px;"></div>
-                    </div>
-                `;
+                const fecha = new Date(p.fecha_hora).toLocaleString();
+                const resultado = (p.goles_local_real !== null && p.goles_visitante_real !== null) ? `${p.goles_local_real} - ${p.goles_visitante_real}` : 'Sin jugar';
+                const numeroPartido = p.numero;
+                let tarjeta = `<div style="background:#f8fafc; border-radius:16px; padding:12px; border-left:6px solid #f5c542;">
+                            <div><strong>Partido #${numeroPartido}</strong> — ${localNom} vs ${visitNom}</div>
+                            <div style="font-size:0.8rem; color:#555;">📅 ${fecha}</div>
+                            <div style="font-size:1rem; margin-top:5px;">🏆 Resultado: <strong>${resultado}</strong></div>`;
+                if (currentUserRol === 'admin') {
+                    tarjeta += `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
+                                    <input type="number" id="real_local_${p.id}" placeholder="Local" style="width:70px;" value="${p.goles_local_real ?? ''}">
+                                    <span>-</span>
+                                    <input type="number" id="real_visit_${p.id}" placeholder="Visit" style="width:70px;" value="${p.goles_visitante_real ?? ''}">
+                                    <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border:none; border-radius:30px; padding:6px 16px;">Guardar</button>
+                                    <span class="msg-guardado-${p.id}" style="font-size:0.7rem;"></span>
+                                </div>`;
+                }
+                tarjeta += `</div>`;
+                html += tarjeta;
             }
             html += `</div></div>`;
         }
         modalContenido.innerHTML = html;
-        
-        // Asignar eventos a los botones guardar
-        document.querySelectorAll('.guardar-resultado-admin').forEach(btn => {
-            btn.onclick = async (e) => {
-                const pid = parseInt(btn.dataset.id);
-                const localInput = document.getElementById(`real_local_${pid}`);
-                const visitInput = document.getElementById(`real_visit_${pid}`);
-                const msgDiv = document.getElementById(`msg-${pid}`);
-                
-                const localReal = parseInt(localInput.value);
-                const visitReal = parseInt(visitInput.value);
-                
-                if (isNaN(localReal) || isNaN(visitReal)) {
-                    msgDiv.innerHTML = '<span style="color:red;">❌ Ingresa números válidos</span>';
-                    setTimeout(() => { msgDiv.innerHTML = ''; }, 2000);
-                    return;
-                }
-                
-                msgDiv.innerHTML = '<span style="color:blue;">Guardando...</span>';
-                
-                try {
-                    // Actualizar en Supabase
+
+        if (currentUserRol === 'admin') {
+            document.querySelectorAll('.guardar-resultado-admin').forEach(btn => {
+                btn.onclick = async (e) => {
+                    const pid = parseInt(btn.dataset.id);
+                    const localReal = parseInt(document.getElementById(`real_local_${pid}`).value);
+                    const visitReal = parseInt(document.getElementById(`real_visit_${pid}`).value);
+                    const msgSpan = document.querySelector(`.msg-guardado-${pid}`);
+                    if (isNaN(localReal) || isNaN(visitReal)) {
+                        alert("Ingresa números válidos");
+                        return;
+                    }
                     const { error } = await _supabase.from('partidos').update({
                         goles_local_real: localReal,
                         goles_visitante_real: visitReal,
-                        ganador_penaltis_real: null,  // en grupos no hay penales
+                        ganador_penaltis_real: null,
                         estado: 'finalizado'
                     }).eq('id', pid);
-                    
                     if (error) {
-                        console.error("Error al guardar:", error);
-                        msgDiv.innerHTML = `<span style="color:red;">❌ Error: ${error.message}</span>`;
-                        setTimeout(() => { msgDiv.innerHTML = ''; }, 3000);
+                        msgSpan.innerText = '❌ Error';
+                        msgSpan.style.color = 'red';
+                        console.error(error);
                     } else {
-                        msgDiv.innerHTML = '<span style="color:green;">✅ Resultado guardado</span>';
-                        // Refrescar el modal y la tabla de grupos
-                        await renderizarPartidosEnModal();
-                        await renderGrupos();  // actualiza la tabla de posiciones en la pestaña Grupos
-                        setTimeout(() => { msgDiv.innerHTML = ''; }, 2000);
+                        msgSpan.innerText = '✅ Guardado';
+                        msgSpan.style.color = 'green';
+                        await cargarPartidos();
+                        await renderGrupos();
+                        await renderizarPartidosEnModal(); // refrescar modal
+                        setTimeout(() => { msgSpan.innerText = ''; }, 2000);
                     }
-                } catch (err) {
-                    console.error("Excepción:", err);
-                    msgDiv.innerHTML = `<span style="color:red;">❌ Error inesperado: ${err.message}</span>`;
-                    setTimeout(() => { msgDiv.innerHTML = ''; }, 3000);
-                }
-            };
-        });
+                };
+            });
+        }
     }
-    
     await renderizarPartidosEnModal();
-    
-    document.getElementById('cerrarModal').onclick = () => modal.remove();
-}
-    
-    await renderizarPartidosEnModal();
-    
-    document.getElementById('cerrarModal').onclick = () => modal.remove();
 }
 
-// Mostrar mejores 8 terceros (basado en resultados reales)
 async function mostrarMejoresTerceros() {
     const grupos = ['A','B','C','D','E','F','G','H','I','J','K','L'];
     const partidosConResultado = partidosCache.filter(p => p.fase === 'grupos' && p.goles_local_real !== null && p.goles_visitante_real !== null);
@@ -453,58 +409,86 @@ async function mostrarMejoresTerceros() {
     }
     terceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
     const mejores8 = terceros.slice(0,8);
-    let html = `<div class="modal-content" style="max-width:600px;">
-        <div style="display:flex; justify-content:space-between;"><h3>🏆 Mejores 8 terceros (resultados reales)</h3><button id="cerrarModal3" style="background:#c00; color:white; border:none; border-radius:50%; width:30px;">X</button></div>
-        <table class="tabla-posiciones">
-            <thead><tr><th>Pos</th><th>Grupo</th><th>Equipo</th><th>Pts</th><th>DG</th><th>GF</th></tr></thead>
-            <tbody>`;
-    mejores8.forEach((t,idx) => {
-        html += `<tr><td>${idx+1}</td><td>${t.grupo}</td><td>${t.equipo}</td><td>${t.puntos}</td><td>${t.dif}</td><td>${t.gf}</td></tr>`;
-    });
-    html += `</tbody></table></div>`;
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = html;
-    document.body.appendChild(modal);
-    document.getElementById('cerrarModal3').onclick = () => modal.remove();
+    const modalHtml = `
+        <div class="modal-overlay" id="modalTerceros">
+            <div class="modal-content" style="max-width: 600px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h3>🏆 Mejores 8 terceros (resultados reales)</h3>
+                    <button id="cerrarModalTerceros" style="background:#c00; color:white; border:none; border-radius:50%; width:32px; cursor:pointer;">✕</button>
+                </div>
+                <table class="tabla-posiciones">
+                    <thead><tr><th>Pos</th><th>Grupo</th><th>Equipo</th><th>Pts</th><th>DG</th><th>GF</th></tr></thead>
+                    <tbody>
+                        ${mejores8.map((t,idx) => `<tr><td>${idx+1}</td><td>${t.grupo}</td><td>${t.equipo}</td><td>${t.puntos}</td><td>${t.dif}</td><td>${t.gf}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('cerrarModalTerceros').onclick = () => document.getElementById('modalTerceros').remove();
 }
 
-// ==================== RENDER PARTIDOS (pronósticos) ====================
+// ==================== RENDER PARTIDOS (pronósticos del usuario) ====================
 async function renderPartidos() {
     const container = document.getElementById('partidos');
-    let html = '<h3>Fase de Grupos</h3><div class="partidos-lista">';
-    const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
-    for (let p of partidosGrupo) html += await generarCardPartido(p);
-    html += '</div><h3>Eliminatorias</h3><div class="partidos-lista">';
-    const partidosElim = partidosCache.filter(p => p.fase !== 'grupos');
-    for (let p of partidosElim) html += await generarCardPartido(p);
-    html += '</div>';
+    const gruposJornadas = [
+        { fase: 'grupos', jornada: 1, titulo: '📅 Fase de Grupos - Jornada 1', numeros: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24] },
+        { fase: 'grupos', jornada: 2, titulo: '📅 Fase de Grupos - Jornada 2', numeros: [25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48] },
+        { fase: 'grupos', jornada: 3, titulo: '📅 Fase de Grupos - Jornada 3', numeros: [49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72] },
+        { fase: '16vos', titulo: '🏆 16vos de Final' },
+        { fase: '8vos', titulo: '🏆 8vos de Final' },
+        { fase: '4tos', titulo: '🏆 4tos de Final' },
+        { fase: 'semis', titulo: '🏆 Semifinales' },
+        { fase: 'tercero', titulo: '🥉 Partido por el 3er lugar' },
+        { fase: 'final', titulo: '🏆 Gran Final' }
+    ];
+    let html = '';
+    for (let grupo of gruposJornadas) {
+        let partidosFase;
+        if (grupo.fase === 'grupos') {
+            partidosFase = partidosCache.filter(p => p.fase === 'grupos' && grupo.numeros.includes(p.numero));
+        } else {
+            partidosFase = partidosCache.filter(p => p.fase === grupo.fase);
+        }
+        if (partidosFase.length === 0) continue;
+        html += `<div style="margin-top: 1.5rem;">
+                    <h3 style="background: #0a5c2e; color: white; padding: 8px 16px; border-radius: 30px; display: inline-block;">${grupo.titulo}</h3>
+                    <div class="partidos-lista" style="margin-top: 12px;">`;
+        for (let p of partidosFase) {
+            html += await generarCardPartidoHorizontal(p);
+        }
+        html += `</div></div>`;
+    }
     container.innerHTML = html;
     document.querySelectorAll('.btn-guardar-prono').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const pid = parseInt(btn.dataset.partidoId);
-            const gLocal = parseInt(document.getElementById(`gol_local_${pid}`).value);
-            const gVisit = parseInt(document.getElementById(`gol_visit_${pid}`).value);
-            const penaltis = document.getElementById(`penaltis_${pid}`).checked;
-            if (isNaN(gLocal) || isNaN(gVisit)) { alert("Ingresa números"); return; }
-            const partido = partidosCache.find(p => p.id === pid);
-            const fechaPartido = new Date(partido.fecha_hora);
-            const diffHoras = (fechaPartido - new Date()) / (1000*60*60);
-            if (diffHoras < 24) { alert("No puedes cambiar el pronóstico faltando menos de 24 horas"); return; }
-            await _supabase.from('pronosticos_partidos').upsert({
+            const partidoId = parseInt(btn.dataset.partidoId);
+            const gLocal = parseInt(document.getElementById(`gol_local_${partidoId}`).value);
+            const gVisit = parseInt(document.getElementById(`gol_visit_${partidoId}`).value);
+            const penaltis = document.getElementById(`penaltis_${partidoId}`)?.checked || false;
+            if (isNaN(gLocal) || isNaN(gVisit)) { alert("Ingresa números de goles"); return; }
+            const partido = partidosCache.find(p => p.id === partidoId);
+            const diffHoras = (new Date(partido.fecha_hora) - new Date()) / (1000*60*60);
+            if (diffHoras < 24) {
+                alert("No puedes cambiar el pronóstico faltando menos de 24 horas para el partido.");
+                return;
+            }
+            const { error } = await _supabase.from('pronosticos_partidos').upsert({
                 usuario_id: currentUser.id,
-                partido_id: pid,
+                partido_id: partidoId,
                 goles_local: gLocal,
                 goles_visitante: gVisit,
                 penaltis: penaltis,
                 fecha_pronostico: new Date()
             }, { onConflict: 'usuario_id, partido_id' });
-            alert("Pronóstico guardado");
+            if (error) alert("Error al guardar: " + error.message);
+            else alert("Pronóstico guardado");
         });
     });
 }
 
-async function generarCardPartido(partido) {
+async function generarCardPartidoHorizontal(partido) {
     const { data: prono } = await _supabase.from('pronosticos_partidos').select('*')
         .eq('usuario_id', currentUser.id).eq('partido_id', partido.id).maybeSingle();
     const gLocal = prono ? prono.goles_local : '';
@@ -512,17 +496,24 @@ async function generarCardPartido(partido) {
     const penaltis = prono ? prono.penaltis : false;
     const resultadoReal = (partido.goles_local_real !== null && partido.goles_visitante_real !== null)
         ? `${partido.goles_local_real} - ${partido.goles_visitante_real}` : 'No jugado';
+    const localNom = getNombreEquipo(partido.equipo_local_id);
+    const visitNom = getNombreEquipo(partido.equipo_visitante_id);
     return `
-        <div class="partido-item">
-            <div>
-                <div class="fecha-partido">${new Date(partido.fecha_hora).toLocaleString()}</div>
-                <div><strong>${getNombreEquipo(partido.equipo_local_id)} vs ${getNombreEquipo(partido.equipo_visitante_id)}</strong></div>
-                <div>Real: ${resultadoReal}</div>
+        <div class="partido-item-horizontal">
+            <div class="partido-header">
+                <span>Partido #${partido.numero} - ${new Date(partido.fecha_hora).toLocaleString()}</span>
             </div>
-            <div class="pronostico-inputs">
-                <input type="number" id="gol_local_${partido.id}" value="${gLocal}" style="width:70px"> - <input type="number" id="gol_visit_${partido.id}" value="${gVisit}" style="width:70px">
-                <label><input type="checkbox" id="penaltis_${partido.id}" ${penaltis ? 'checked' : ''}> Penales</label>
-                <button class="btn-guardar btn-guardar-prono" data-partido-id="${partido.id}">Guardar</button>
+            <div class="partido-cuerpo">
+                <div class="equipo-local">${localNom}</div>
+                <div class="pronostico-inputs-horizontal">
+                    <input type="number" id="gol_local_${partido.id}" value="${gLocal}" placeholder="0" style="width: 70px;">
+                    <span> - </span>
+                    <input type="number" id="gol_visit_${partido.id}" value="${gVisit}" placeholder="0" style="width: 70px;">
+                    <label><input type="checkbox" id="penaltis_${partido.id}" ${penaltis ? 'checked' : ''}> ¿Penales?</label>
+                    <button class="btn-guardar btn-guardar-prono" data-partido-id="${partido.id}">Guardar</button>
+                </div>
+                <div class="equipo-visitante">${visitNom}</div>
+                <div class="resultado-real">Real: ${resultadoReal}</div>
             </div>
         </div>
     `;
@@ -545,7 +536,7 @@ function renderGoleador(yaVoto, nombreActual) {
     }
 }
 
-// ==================== ADMIN (panel simple) ====================
+// ==================== ADMIN ====================
 function renderAdmin() {
     const container = document.getElementById('admin');
     container.innerHTML = `<p>Panel de administrador. Usa el botón "Ver partidos por grupo" en la pestaña Grupos para cargar resultados.</p>`;
@@ -554,9 +545,9 @@ function renderAdmin() {
 // ==================== RANKING ====================
 async function mostrarRanking() {
     const { data: perfiles } = await _supabase.from('perfiles').select('nombre, puntos_totales').order('puntos_totales', { ascending: false });
-    let html = `<div class="modal-content"><h3>🏆 Ranking</h3><ul>`;
+    let html = `<div class="modal-content" style="padding:1rem;"><h3>🏆 Ranking de usuarios</h3><ul>`;
     perfiles.forEach((p,i) => { html += `<li>${i+1}. ${p.nombre} - ${p.puntos_totales} pts</li>`; });
-    html += `</ul><button id="cerrarRanking">Cerrar</button></div>`;
+    html += `</ul><button id="cerrarRanking" style="background:#0a5c2e; color:white; border:none; padding:8px 16px; border-radius:30px;">Cerrar</button></div>`;
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = html;
