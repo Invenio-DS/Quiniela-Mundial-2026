@@ -73,7 +73,7 @@ async function mostrarBienvenida() {
     document.getElementById('contenido').innerHTML = `
         <div class="welcome-container" style="${backgroundStyle}">
             ${logoHtml}
-            <h1 class="welcome-title">🏆 Quiniela Mundial 2026</h1>
+            <h1 class="welcome-title">🏆 Quiniela Mundial USA - MEX - CAN 2026</h1>
             <p class="welcome-title" style="font-size:1.2rem;">Bienvenido a tus Pronosticos del Mundial 2026</p>
             <button id="btnContinuar" style="background:#f5c542; border:none; padding:12px 32px; border-radius:40px; font-weight:bold; margin-top:2rem;">Continuar →</button>
         </div>
@@ -81,6 +81,63 @@ async function mostrarBienvenida() {
     `;
     document.getElementById('btnContinuar').onclick = () => mostrarLogin();
     document.getElementById('btnAbrirReglas').onclick = () => mostrarReglas(reglasTexto);
+}
+function mostrarReglas(reglasTexto) {
+    // 1. Crear el contenedor del modal (overlay)
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'modalReglasOverlay';
+    modalOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    `;
+
+    // 2. Crear el contenido del modal
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        border-radius: 24px;
+        max-width: 90vw;
+        max-height: 85vh;
+        width: 600px;
+        overflow-y: auto;
+        padding: 1.5rem;
+        position: relative;
+    `;
+
+    // 3. Construir el HTML interno de forma segura
+    modalContent.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3><i class="fas fa-scroll"></i> Reglas y Puntuación</h3>
+            <button id="cerrarModalReglasBtn" style="background: #c00; color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 1.2rem;">✕</button>
+        </div>
+        <div style="white-space: pre-line; line-height: 1.5;">
+            ${reglasTexto.replace(/\n/g, '<br>')}
+        </div>
+    `;
+
+    // 4. Ensamblar todo y añadirlo al body
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+
+    // 5. Añadir el evento para cerrar el modal
+    const closeButton = document.getElementById('cerrarModalReglasBtn');
+    if (closeButton) {
+        closeButton.onclick = () => modalOverlay.remove();
+    } else {
+        // Fallback por si el botón no se encuentra
+        console.warn("No se encontró el botón de cerrar, se agregará un evento al overlay.");
+        modalOverlay.onclick = (e) => {
+            if (e.target === modalOverlay) modalOverlay.remove();
+        };
+    }
 }
 function mostrarLogin() {
     document.getElementById('contenido').innerHTML = `
