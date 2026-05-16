@@ -57,13 +57,13 @@ async function mostrarBienvenida() {
 
     // Configura las rutas de tus imágenes (cámbialas según donde las guardes en GitHub)
     const fondoUrl = 'fondo_mundial.jpg';   // Cambia por tu imagen de fondo
-    const logoUrl = 'logo_mundial_2026.png';     // Cambia por el logo del mundial
+    const logoUrl = 'logo_mundial_2026.jpg';     // Cambia por el logo del mundial
 
     document.getElementById('contenido').innerHTML = `
         <div class="welcome-container" style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}');">
             <img src="${logoUrl}" alt="Logo Mundial" class="welcome-logo">
-            <h1 class="welcome-title">🏆 Quiniela Mundial 2026</h1>
-            <p class="welcome-title" style="font-size:1.2rem;">Pronostica y gana</p>
+            <h1 class="welcome-title">🏆 Quiniela Mundial USA - MEX - CAN 2026</h1>
+            <p class="welcome-title" style="font-size:1.9rem;">BIENVENIDO...PRONOSTICA Y GANA</p>
             <button id="btnContinuar" style="background:#f5c542; border:none; padding:12px 32px; border-radius:40px; font-weight:bold; margin-top:2rem;">Continuar →</button>
         </div>
         <button id="btnAbrirReglas" class="btn-reglas">📜 Reglas y puntuación</button>
@@ -82,7 +82,7 @@ function mostrarReglas(reglasTexto) {
         <div class="modal-overlay" id="modalReglasOverlay">
             <div class="modal-content modal-reglas">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <h3><i class="fas fa-scroll"></i> Reglas y puntos</h3>
+                    <h3><i class="fas fa-scroll"></i> Reglas y Puntos</h3>
                     <button id="cerrarModalReglas" style="background:#c00; color:white; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer;">✕</button>
                 </div>
                 <div style="white-space: pre-line; line-height:1.5;">
