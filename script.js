@@ -287,33 +287,37 @@ async function renderGrupos() {
 
 // Mostrar todos los partidos de grupos (72) con opción admin
 async function mostrarPartidosPorGrupo() {
+    // Recargar datos frescos para asegurar resultados actualizados
+    await cargarPartidos();
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
+    
     // Agrupar por grupo
     const grupos = [...new Set(partidosGrupo.map(p => {
         const local = equiposCache.find(e => e.id === p.equipo_local_id);
         return local ? local.grupo : null;
     }).filter(g => g))].sort();
 
-    let contenido = `<div class="modal-content" style="max-width: 1000px; width: 90vw;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h3><i class="fas fa-calendar-alt"></i> Partidos de Fase de Grupos</h3>
-            <button id="cerrarModal" style="background:#c00; color:white; border:none; border-radius:50%; width:36px; height:36px; font-size:1.2rem; cursor:pointer;">✕</button>
-        </div>
-        <div id="modalPartidosContenido">
-            <!-- Aquí se cargarán los partidos dinámicamente -->
-        </div>
-    </div>`;
-
+    // Crear modal con header sticky
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = contenido;
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 1000px; width: 90vw; padding: 0; display: flex; flex-direction: column;">
+            <div style="position: sticky; top: 0; background: white; padding: 1rem; border-bottom: 2px solid #ccc; border-radius: 24px 24px 0 0; z-index: 10; display: flex; justify-content: space-between; align-items: center;">
+                <h3><i class="fas fa-calendar-alt"></i> Partidos de Fase de Grupos</h3>
+                <button id="cerrarModal" style="background:#c00; color:white; border:none; border-radius:50%; width:36px; height:36px; font-size:1.2rem; cursor:pointer;">✕</button>
+            </div>
+            <div id="modalPartidosContenido" style="padding: 1rem; overflow-y: auto; max-height: 70vh;">
+                <!-- Aquí se cargarán dinámicamente los partidos -->
+            </div>
+        </div>
+    `;
     document.body.appendChild(modal);
     
     const modalContenido = document.getElementById('modalPartidosContenido');
     
-    // Función para renderizar los partidos dentro del modal
+    // Función para renderizar partidos dentro del modal
     async function renderizarPartidosEnModal() {
-        // Recargar datos frescos desde Supabase (para mostrar resultados actualizados)
+        // Recargar partidos actualizados
         await cargarPartidos();
         const partidosActualizados = partidosCache.filter(p => p.fase === 'grupos');
         
@@ -324,75 +328,92 @@ async function mostrarPartidosPorGrupo() {
                 return local && local.grupo === g;
             }).sort((a,b) => a.numero - b.numero);
             
-            html += `<div style="margin-bottom: 1.5rem;">
-                <h4 style="background:#0a5c2e; color:white; padding:8px 12px; border-radius:20px; display:inline-block;">Grupo ${g}</h4>
-                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:12px; margin-top:10px;">`;
+            html += `<div style="margin-bottom: 2rem;">
+                        <h4 style="background:#0a5c2e; color:white; padding:8px 12px; border-radius:20px; display:inline-block;">Grupo ${g}</h4>
+                        <div style="display:flex; flex-direction: column; gap: 12px; margin-top: 10px;">`;
             
             for (let p of partidosG) {
                 const localNom = getNombreEquipo(p.equipo_local_id);
                 const visitNom = getNombreEquipo(p.equipo_visitante_id);
-                const fecha = new Date(p.fecha_hora).toLocaleString();
-                const resultado = (p.goles_local_real !== null && p.goles_visitante_real !== null) ? `${p.goles_local_real} - ${p.goles_visitante_real}` : 'Sin jugar';
-                const numeroPartido = p.numero;
+                const fechaHora = new Date(p.fecha_hora).toLocaleString();
+                const resultadoActual = (p.goles_local_real !== null && p.goles_visitante_real !== null) 
+                    ? `${p.goles_local_real} - ${p.goles_visitante_real}` 
+                    : 'Sin jugar';
                 
-                let tarjeta = `<div style="background:#f8fafc; border-radius:16px; padding:12px; border-left:6px solid #f5c542;">
-                    <div><strong>Partido #${numeroPartido}</strong> — ${localNom} vs ${visitNom}</div>
-                    <div style="font-size:0.8rem; color:#555;">📅 ${fecha}</div>
-                    <div style="font-size:1rem; margin-top:5px;">🏆 Resultado: <strong>${resultado}</strong></div>`;
-                
-                if (currentUserRol === 'admin') {
-                    tarjeta += `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
-                                <input type="number" id="real_local_${p.id}" placeholder="Local" style="width:70px;" value="${p.goles_local_real ?? ''}">
+                html += `
+                    <div style="background:#f8fafc; border-radius:16px; padding: 12px; border-left: 6px solid #f5c542;">
+                        <div style="font-weight: bold; margin-bottom: 5px;">Partido #${p.numero} - ${fechaHora}</div>
+                        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
+                            <div style="min-width: 120px; font-weight: 500;">${localNom}</div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="number" id="real_local_${p.id}" placeholder="Local" style="width: 70px; text-align: center;" value="${p.goles_local_real ?? ''}">
                                 <span>-</span>
-                                <input type="number" id="real_visit_${p.id}" placeholder="Visit" style="width:70px;" value="${p.goles_visitante_real ?? ''}">
-                                <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border:none; border-radius:30px; padding:6px 16px;">Guardar</button>
-                                <span class="msg-guardado-${p.id}" style="font-size:0.7rem; margin-left:5px;"></span>
-                              </div>`;
-                }
-                tarjeta += `</div>`;
-                html += tarjeta;
+                                <input type="number" id="real_visit_${p.id}" placeholder="Visit" style="width: 70px; text-align: center;" value="${p.goles_visitante_real ?? ''}">
+                                <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border: none; border-radius: 30px; padding: 6px 16px;">Guardar</button>
+                            </div>
+                            <div style="min-width: 120px; font-weight: 500; text-align: right;">${visitNom}</div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 0.8rem; color: #555;">Resultado actual: <strong>${resultadoActual}</strong></div>
+                        <div id="msg-${p.id}" style="font-size: 0.7rem; margin-top: 5px;"></div>
+                    </div>
+                `;
             }
             html += `</div></div>`;
         }
         modalContenido.innerHTML = html;
         
         // Asignar eventos a los botones guardar
-        if (currentUserRol === 'admin') {
-            document.querySelectorAll('.guardar-resultado-admin').forEach(btn => {
-                btn.onclick = async (e) => {
-                    const pid = parseInt(btn.dataset.id);
-                    const localReal = parseInt(document.getElementById(`real_local_${pid}`).value);
-                    const visitReal = parseInt(document.getElementById(`real_visit_${pid}`).value);
-                    if (isNaN(localReal) || isNaN(visitReal)) {
-                        alert("Ingresa números válidos");
-                        return;
-                    }
-                    // En fase de grupos no hay penales, así que no enviamos ese campo
+        document.querySelectorAll('.guardar-resultado-admin').forEach(btn => {
+            btn.onclick = async (e) => {
+                const pid = parseInt(btn.dataset.id);
+                const localInput = document.getElementById(`real_local_${pid}`);
+                const visitInput = document.getElementById(`real_visit_${pid}`);
+                const msgDiv = document.getElementById(`msg-${pid}`);
+                
+                const localReal = parseInt(localInput.value);
+                const visitReal = parseInt(visitInput.value);
+                
+                if (isNaN(localReal) || isNaN(visitReal)) {
+                    msgDiv.innerHTML = '<span style="color:red;">❌ Ingresa números válidos</span>';
+                    setTimeout(() => { msgDiv.innerHTML = ''; }, 2000);
+                    return;
+                }
+                
+                msgDiv.innerHTML = '<span style="color:blue;">Guardando...</span>';
+                
+                try {
+                    // Actualizar en Supabase
                     const { error } = await _supabase.from('partidos').update({
                         goles_local_real: localReal,
                         goles_visitante_real: visitReal,
-                        ganador_penaltis_real: null,  // no aplica en grupos
+                        ganador_penaltis_real: null,  // en grupos no hay penales
                         estado: 'finalizado'
                     }).eq('id', pid);
                     
-                    const msgSpan = document.querySelector(`.msg-guardado-${pid}`);
                     if (error) {
-                        msgSpan.innerText = '❌ Error';
-                        msgSpan.style.color = 'red';
-                        console.error(error);
+                        console.error("Error al guardar:", error);
+                        msgDiv.innerHTML = `<span style="color:red;">❌ Error: ${error.message}</span>`;
+                        setTimeout(() => { msgDiv.innerHTML = ''; }, 3000);
                     } else {
-                        msgSpan.innerText = '✅ Guardado';
-                        msgSpan.style.color = 'green';
+                        msgDiv.innerHTML = '<span style="color:green;">✅ Resultado guardado</span>';
                         // Refrescar el modal y la tabla de grupos
                         await renderizarPartidosEnModal();
                         await renderGrupos();  // actualiza la tabla de posiciones en la pestaña Grupos
-                        // Opcional: mostrar mensaje temporal
-                        setTimeout(() => { msgSpan.innerText = ''; }, 2000);
+                        setTimeout(() => { msgDiv.innerHTML = ''; }, 2000);
                     }
-                };
-            });
-        }
+                } catch (err) {
+                    console.error("Excepción:", err);
+                    msgDiv.innerHTML = `<span style="color:red;">❌ Error inesperado: ${err.message}</span>`;
+                    setTimeout(() => { msgDiv.innerHTML = ''; }, 3000);
+                }
+            };
+        });
     }
+    
+    await renderizarPartidosEnModal();
+    
+    document.getElementById('cerrarModal').onclick = () => modal.remove();
+}
     
     await renderizarPartidosEnModal();
     
