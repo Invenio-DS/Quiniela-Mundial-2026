@@ -34,11 +34,11 @@ button:hover {
     transform: scale(1.02);
 }
 
-input {
+input, select {
     border: 1px solid #ccc;
     border-radius: 12px;
-    padding: 10px;
-    font-size: 1rem;
+    padding: 8px 12px;
+    font-size: 0.9rem;
 }
 
 /* ==================== HEADER Y TABS ==================== */
@@ -272,7 +272,7 @@ input {
     border-radius: 50px;
     padding: 12px 24px;
     font-weight: bold;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     z-index: 100;
 }
 
