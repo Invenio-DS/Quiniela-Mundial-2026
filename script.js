@@ -35,10 +35,33 @@ async function cargarPartidos() {
     return data;
 }
 
+// ---------- Funciones para banderas ----------
+function normalizarNombreParaBandera(nombre) {
+    return nombre.toLowerCase()
+        .replace(/ /g, '_')
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // elimina acentos
+}
+
+function getBanderaHtml(nombre) {
+    const nombreArchivo = normalizarNombreParaBandera(nombre);
+    return `<img src="assets/banderas/${nombreArchivo}.png" class="flag-icon" alt="${nombre}" onerror="this.style.display='none'">`;
+}
+
+function getEquipoConBandera(nombre) {
+    return `<span class="equipo-con-bandera">${getBanderaHtml(nombre)} ${nombre}</span>`;
+}
+
 function getNombreEquipo(id) {
     const eq = equiposCache.find(e => e.id === id);
     return eq ? eq.nombre : '?';
 }
+
+function getNombreEquipoConBandera(id) {
+    const nombre = getNombreEquipo(id);
+    return nombre !== '?' ? getEquipoConBandera(nombre) : nombre;
+}
+
+// -------------------------------------------------
 
 function limpiarCacheNavegador() {
     localStorage.clear();
@@ -294,9 +317,15 @@ async function renderGrupos() {
             stats.push({ nombre: eq.nombre, pj, pg, pe, pp, gf, gc, dif, puntos });
         }
         stats.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
-        html += `<div class="card-grupo"><h3>Grupo ${g}</h3><table class="tabla-posiciones"><thead><tr><th>Equipo</th><th>JJ</th><th>JG</th><th>JE</th><th>JP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
+        html += `<div class="card-grupo"><h3>Grupo ${g}</h3><table class="tabla-posiciones"><thead><tr><th>Bandera</th><th>Equipo</th><th>JJ</th><th>JG</th><th>JE</th><th>JP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
         stats.forEach(s => {
-            html += `<tr><td>${s.nombre}</td><td>${s.pj}</td><td>${s.pg}</td><td>${s.pe}</td><td>${s.pp}</td><td>${s.gf}</td><td>${s.gc}</td><td>${s.dif}</td><td><b>${s.puntos}</b></td></tr>`;
+            html += `<tr>
+                        <td>${getBanderaHtml(s.nombre)}</td>
+                        <td>${s.nombre}</td>
+                        <td>${s.pj}</td><td>${s.pg}</td><td>${s.pe}</td><td>${s.pp}</td>
+                        <td>${s.gf}</td><td>${s.gc}</td><td>${s.dif}</td>
+                        <td><b>${s.puntos}</b></td>
+                     </tr>`;
         });
         html += `</tbody></table></div>`;
     }
@@ -342,14 +371,16 @@ async function mostrarPartidosPorGrupo() {
             }).sort((a,b) => a.numero - b.numero);
             html += `<div style="margin-bottom: 1.5rem;">
                         <h4 style="background:#0a5c2e; color:white; padding:8px 12px; border-radius:20px; display:inline-block;">Grupo ${g}</h4>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:12px; margin-top:10px;">`;
+                        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:12px; margin-top:10px;">`;
             for (let p of partidosG) {
                 const localNom = getNombreEquipo(p.equipo_local_id);
                 const visitNom = getNombreEquipo(p.equipo_visitante_id);
+                const localHtml = getEquipoConBandera(localNom);
+                const visitHtml = getEquipoConBandera(visitNom);
                 const fecha = new Date(p.fecha_hora).toLocaleString();
                 const resultado = (p.goles_local_real !== null && p.goles_visitante_real !== null) ? `${p.goles_local_real} - ${p.goles_visitante_real}` : 'Sin jugar';
                 let tarjeta = `<div style="background:#f8fafc; border-radius:16px; padding:12px; border-left:6px solid #f5c542;">
-                            <div><strong>Partido #${p.numero}</strong> — ${localNom} vs ${visitNom}</div>
+                            <div><strong>Partido #${p.numero}</strong> — ${localHtml} vs ${visitHtml}</div>
                             <div style="font-size:0.8rem; color:#555;">📅 ${fecha}</div>
                             <div style="font-size:1rem; margin-top:5px;">🏆 Resultado: <strong>${resultado}</strong></div>`;
                 if (currentUserRol === 'admin') {
@@ -376,7 +407,6 @@ async function mostrarPartidosPorGrupo() {
         }
         modalContenido.innerHTML = html;
 
-        // Mostrar/ocultar selector de ganador según checkbox
         if (currentUserRol === 'admin') {
             document.querySelectorAll('#modalPartidosContenido input[type="checkbox"]').forEach(cb => {
                 const idPartido = cb.id.split('_')[2];
@@ -401,7 +431,7 @@ async function mostrarPartidosPorGrupo() {
                     let ganadorPenales = null;
                     if (penales) {
                         const select = document.getElementById(`ganador_${pid}`);
-                        ganadorPenales = (select.value === 'local'); // true=local, false=visitante
+                        ganadorPenales = (select.value === 'local');
                     }
                     const { error } = await _supabase.from('partidos').update({
                         goles_local_real: localReal,
@@ -415,12 +445,10 @@ async function mostrarPartidosPorGrupo() {
                     } else {
                         msgSpan.innerText = '✅ Guardado';
                         msgSpan.style.color = 'green';
-                        // Recargar datos (los puntos se calculan automáticamente en Supabase)
                         await cargarPartidos();
-                        await cargarPerfilUsuario();  // actualiza puntos del usuario actual
+                        await cargarPerfilUsuario();
                         await renderGrupos();
                         await renderizarPartidosEnModal();
-                        // Actualizar puntos en el header
                         const puntosSpan = document.querySelector('.user-info .fa-trophy')?.parentNode;
                         if (puntosSpan) puntosSpan.innerHTML = `<i class="fas fa-trophy"></i> Puntos: ${currentUserPuntos}`;
                         setTimeout(() => msgSpan.innerText = '', 2000);
@@ -474,7 +502,7 @@ async function mostrarMejoresTerceros() {
                 <table class="tabla-posiciones">
                     <thead><tr><th>Pos</th><th>Grupo</th><th>Equipo</th><th>Pts</th><th>DG</th><th>GF</th></tr></thead>
                     <tbody>
-                        ${mejores8.map((t,idx) => `<tr><td>${idx+1}</td><td>${t.grupo}</td><td>${t.equipo}</td><td>${t.puntos}</td><td>${t.dif}</td><td>${t.gf}</td></tr>`).join('')}
+                        ${mejores8.map((t,idx) => `<tr><td>${idx+1}</td><td>${t.grupo}</td><td>${getEquipoConBandera(t.equipo)}</td><td>${t.puntos}</td><td>${t.dif}</td><td>${t.gf}</td></tr>`).join('')}
                     </tbody>
                 </table>
             </div>
@@ -553,13 +581,15 @@ async function generarCardPartidoHorizontal(partido) {
         ? `${partido.goles_local_real} - ${partido.goles_visitante_real}` : 'No jugado';
     const localNom = getNombreEquipo(partido.equipo_local_id);
     const visitNom = getNombreEquipo(partido.equipo_visitante_id);
+    const localHtml = getEquipoConBandera(localNom);
+    const visitHtml = getEquipoConBandera(visitNom);
     return `
         <div class="partido-item-horizontal">
             <div class="partido-header">
                 <span>Partido #${partido.numero} - ${new Date(partido.fecha_hora).toLocaleString()}</span>
             </div>
             <div class="partido-cuerpo">
-                <div class="equipo-local">${localNom}</div>
+                <div class="equipo-local">${localHtml}</div>
                 <div class="pronostico-inputs-horizontal">
                     <input type="number" id="gol_local_${partido.id}" value="${gLocal}" placeholder="0" style="width: 70px;">
                     <span> - </span>
@@ -567,7 +597,7 @@ async function generarCardPartidoHorizontal(partido) {
                     <label><input type="checkbox" id="penaltis_${partido.id}" ${penaltis ? 'checked' : ''}> ¿Penales?</label>
                     <button class="btn-guardar btn-guardar-prono" data-partido-id="${partido.id}">Guardar</button>
                 </div>
-                <div class="equipo-visitante">${visitNom}</div>
+                <div class="equipo-visitante">${visitHtml}</div>
                 <div class="resultado-real">Real: ${resultadoReal}</div>
             </div>
         </div>
