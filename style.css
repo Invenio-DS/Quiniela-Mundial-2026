@@ -41,6 +41,23 @@ input, select {
     font-size: 0.9rem;
 }
 
+/* Bandera en línea */
+.flag-icon {
+    width: 24px;
+    height: 18px;
+    margin-right: 8px;
+    vertical-align: middle;
+    object-fit: cover;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.equipo-con-bandera {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
 /* ==================== HEADER Y TABS ==================== */
 .header {
     background: #0a2a1f;
@@ -69,6 +86,7 @@ input, select {
     display: flex;
     gap: 15px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .btn-ranking {
@@ -120,7 +138,7 @@ input, select {
 /* ==================== GRUPOS ==================== */
 .grupos-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
     gap: 20px;
     margin-top: 20px;
 }
@@ -145,6 +163,7 @@ input, select {
     padding: 6px 4px;
     text-align: center;
     border-bottom: 1px solid #ddd;
+    vertical-align: middle;
 }
 
 .tabla-posiciones th {
@@ -180,7 +199,10 @@ input, select {
 }
 .equipo-local, .equipo-visitante {
     font-weight: 600;
-    min-width: 120px;
+    min-width: 140px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 .pronostico-inputs-horizontal {
     display: flex;
@@ -198,7 +220,7 @@ input, select {
         align-items: stretch;
     }
     .equipo-local, .equipo-visitante {
-        text-align: center;
+        justify-content: center;
     }
     .pronostico-inputs-horizontal {
         justify-content: center;
