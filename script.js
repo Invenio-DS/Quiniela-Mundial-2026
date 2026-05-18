@@ -35,24 +35,26 @@ async function cargarPartidos() {
     return data;
 }
 
-// ---------- Funciones para banderas ----------
-function normalizarNombreParaBandera(nombre) {
-    return nombre.toLowerCase()
-        .replace(/ /g, '_')
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+// ---------- Funciones para banderas usando la URL de la BD ----------
+function getBanderaHtml(equipo) {
+    if (!equipo || !equipo.bandera_url || equipo.bandera_url === '') {
+        return '';
+    }
+    return `<img src="${equipo.bandera_url}" class="flag-icon" alt="${equipo.nombre}" onerror="this.style.display='none'">`;
 }
 
-function getBanderaHtml(nombre) {
-    const nombreArchivo = normalizarNombreParaBandera(nombre);
-    return `<img src="assets/banderas/${nombreArchivo}.png" class="flag-icon" alt="${nombre}" onerror="this.style.display='none'">`;
+function getEquipoConBandera(equipo) {
+    if (!equipo) return '?';
+    const banderaHtml = getBanderaHtml(equipo);
+    return `<span class="equipo-con-bandera">${banderaHtml} ${equipo.nombre}</span>`;
 }
 
-function getEquipoConBandera(nombre) {
-    return `<span class="equipo-con-bandera">${getBanderaHtml(nombre)} ${nombre}</span>`;
+function getEquipoById(id) {
+    return equiposCache.find(e => e.id === id);
 }
 
 function getNombreEquipo(id) {
-    const eq = equiposCache.find(e => e.id === id);
+    const eq = getEquipoById(id);
     return eq ? eq.nombre : '?';
 }
 
@@ -307,17 +309,17 @@ async function renderGrupos() {
             }
             const puntos = pg*3 + pe;
             const dif = gf - gc;
-            stats.push({ nombre: eq.nombre, pj, pg, pe, pp, gf, gc, dif, puntos });
+            stats.push({ equipo: eq, pj, pg, pe, pp, gf, gc, dif, puntos });
         }
         stats.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
         html += `<div class="card-grupo"><h3>Grupo ${g}</h3><table class="tabla-posiciones"><thead><tr><th>Equipo</th><th>JJ</th><th>JG</th><th>JE</th><th>JP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
         stats.forEach(s => {
             html += `<tr>
-                        <td>${getEquipoConBandera(s.nombre)}</td>
+                        <td>${getEquipoConBandera(s.equipo)}</td>
                         <td>${s.pj}</td><td>${s.pg}</td><td>${s.pe}</td><td>${s.pp}</td>
                         <td>${s.gf}</td><td>${s.gc}</td><td>${s.dif}</td>
                         <td><b>${s.puntos}</b></td>
-                     </tr>`;
+                      </tr>`;
         });
         html += `</tbody></table></div>`;
     }
@@ -331,7 +333,7 @@ async function renderGrupos() {
 async function mostrarPartidosPorGrupo() {
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
     const grupos = [...new Set(partidosGrupo.map(p => {
-        const local = equiposCache.find(e => e.id === p.equipo_local_id);
+        const local = getEquipoById(p.equipo_local_id);
         return local ? local.grupo : null;
     }).filter(g => g))].sort();
 
@@ -357,17 +359,17 @@ async function mostrarPartidosPorGrupo() {
         let html = '';
         for (let g of grupos) {
             const partidosG = partidosActualizados.filter(p => {
-                const local = equiposCache.find(e => e.id === p.equipo_local_id);
+                const local = getEquipoById(p.equipo_local_id);
                 return local && local.grupo === g;
             }).sort((a,b) => a.numero - b.numero);
             html += `<div style="margin-bottom: 1.5rem;">
                         <h4 style="background:#0a5c2e; color:white; padding:8px 12px; border-radius:20px; display:inline-block;">Grupo ${g}</h4>
                         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:12px; margin-top:10px;">`;
             for (let p of partidosG) {
-                const localNom = getNombreEquipo(p.equipo_local_id);
-                const visitNom = getNombreEquipo(p.equipo_visitante_id);
-                const localHtml = getEquipoConBandera(localNom);
-                const visitHtml = getEquipoConBandera(visitNom);
+                const localEq = getEquipoById(p.equipo_local_id);
+                const visitEq = getEquipoById(p.equipo_visitante_id);
+                const localHtml = getEquipoConBandera(localEq);
+                const visitHtml = getEquipoConBandera(visitEq);
                 const fecha = new Date(p.fecha_hora).toLocaleString();
                 const resultado = (p.goles_local_real !== null && p.goles_visitante_real !== null) ? `${p.goles_local_real} - ${p.goles_visitante_real}` : 'Sin jugar';
                 let tarjeta = `<div style="background:#f8fafc; border-radius:16px; padding:12px; border-left:6px solid #f5c542;">
@@ -476,13 +478,13 @@ async function mostrarMejoresTerceros() {
             }
             const puntos = pg*3 + pe;
             const dif = gf - gc;
-            stats.push({ nombre: eq.nombre, puntos, gf, gc, dif });
+            stats.push({ equipo: eq, puntos, gf, gc, dif });
         }
         stats.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
-        if (stats[2]) terceros.push({ grupo: g, equipo: stats[2].nombre, puntos: stats[2].puntos, dif: stats[2].dif, gf: stats[2].gf });
+        if (stats[2]) terceros.push({ grupo: g, equipo: stats[2].equipo, puntos: stats[2].puntos, dif: stats[2].dif, gf: stats[2].gf });
     }
     terceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
-    const mejores8 = terceros.slice(0,12);
+    const mejores8 = terceros.slice(0,8);
     const modalHtml = `
         <div class="modal-overlay" id="modalTerceros">
             <div class="modal-content" style="max-width: 600px; padding:1rem;">
@@ -570,10 +572,10 @@ async function generarCardPartidoHorizontal(partido) {
     const penaltis = prono ? prono.penaltis : false;
     const resultadoReal = (partido.goles_local_real !== null && partido.goles_visitante_real !== null)
         ? `${partido.goles_local_real} - ${partido.goles_visitante_real}` : 'No jugado';
-    const localNom = getNombreEquipo(partido.equipo_local_id);
-    const visitNom = getNombreEquipo(partido.equipo_visitante_id);
-    const localHtml = getEquipoConBandera(localNom);
-    const visitHtml = getEquipoConBandera(visitNom);
+    const localEq = getEquipoById(partido.equipo_local_id);
+    const visitEq = getEquipoById(partido.equipo_visitante_id);
+    const localHtml = getEquipoConBandera(localEq);
+    const visitHtml = getEquipoConBandera(visitEq);
     return `
         <div class="partido-item-horizontal">
             <div class="partido-header">
@@ -626,12 +628,12 @@ async function renderSimulacionUsuario() {
             equiposGrupo.some(eq => eq.id === p.equipo_local_id) &&
             equiposGrupo.some(eq => eq.id === p.equipo_visitante_id));
         
-        let tabla = equiposGrupo.map(eq => ({ id: eq.id, nombre: eq.nombre, puntos: 0, gf: 0, gc: 0, pj: 0 }));
+        let tabla = equiposGrupo.map(eq => ({ equipo: eq, puntos: 0, gf: 0, gc: 0, pj: 0 }));
         for (let partido of partidosGrupo) {
             const prono = pronosGrupos.find(pr => pr.partido_id === partido.id);
             if (!prono) continue;
-            const local = tabla.find(t => t.id === partido.equipo_local_id);
-            const visit = tabla.find(t => t.id === partido.equipo_visitante_id);
+            const local = tabla.find(t => t.equipo.id === partido.equipo_local_id);
+            const visit = tabla.find(t => t.equipo.id === partido.equipo_visitante_id);
             const gLocal = prono.goles_local;
             const gVisit = prono.goles_visitante;
             if (gLocal > gVisit) local.puntos += 3;
@@ -641,11 +643,10 @@ async function renderSimulacionUsuario() {
             visit.gf += gVisit; visit.gc += gLocal;
             local.pj++; visit.pj++;
         }
-        // Ordenar
         tabla.sort((a,b) => b.puntos - a.puntos || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
         if (tabla.length >= 3) {
             const tercero = tabla[2];
-            todosTerceros.push({ grupo: g, equipo: tercero.nombre, puntos: tercero.puntos, dif: tercero.gf - tercero.gc, gf: tercero.gf });
+            todosTerceros.push({ grupo: g, equipo: tercero.equipo, puntos: tercero.puntos, dif: tercero.gf - tercero.gc, gf: tercero.gf });
         }
         let tablaHtml = `<table class="simulacion-tabla"><thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
         tabla.forEach((eq, idx) => {
@@ -655,14 +656,9 @@ async function renderSimulacionUsuario() {
             const empatados = eq.puntos % 3 === 1 ? 1 : 0;
             const perdidos = eq.pj - ganados - empatados;
             tablaHtml += `<tr class="${clase}">
-                <td>${getEquipoConBandera(eq.nombre)}</td>
-                <td>${eq.pj}</td>
-                <td>${ganados}</td>
-                <td>${empatados}</td>
-                <td>${perdidos}</td>
-                <td>${eq.gf}</td>
-                <td>${eq.gc}</td>
-                <td>${eq.gf - eq.gc}</td>
+                <td>${getEquipoConBandera(eq.equipo)}</td>
+                <td>${eq.pj}</td><td>${ganados}</td><td>${empatados}</td><td>${perdidos}</td>
+                <td>${eq.gf}</td><td>${eq.gc}</td><td>${eq.gf - eq.gc}</td>
                 <td><b>${eq.puntos}</b></td>
             </tr>`;
         });
@@ -670,27 +666,25 @@ async function renderSimulacionUsuario() {
         html += `<div class="simulacion-grupo"><h4>Grupo ${g}</h4>${tablaHtml}</div>`;
     }
 
-    // Ordenar terceros y elegir los 8 mejores
     todosTerceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
-    const mejoresTerceros = todosTerceros.slice(0,12);
+    const mejoresTerceros = todosTerceros.slice(0,8);
     html += `<div class="lista-terceros"><h4>🏆 Los 8 mejores terceros (según tus pronósticos)</h4><ul>`;
     mejoresTerceros.forEach(t => {
         html += `<li class="resaltado-tercero"><strong>Grupo ${t.grupo}:</strong> ${getEquipoConBandera(t.equipo)} - ${t.puntos} pts, DG: ${t.dif}</li>`;
     });
     html += `</ul></div>`;
 
-    // Lista de equipos clasificados a 16vos
     html += `<div class="lista-terceros"><h4>✅ Equipos que avanzarían a 16vos de final</h4><ul>`;
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
         const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && 
             equiposGrupo.some(eq => eq.id === p.equipo_local_id));
-        let tabla = equiposGrupo.map(eq => ({ id: eq.id, nombre: eq.nombre, puntos: 0, gf: 0, gc: 0 }));
+        let tabla = equiposGrupo.map(eq => ({ equipo: eq, puntos: 0, gf: 0, gc: 0 }));
         for (let partido of partidosGrupo) {
             const prono = pronosGrupos.find(pr => pr.partido_id === partido.id);
             if (!prono) continue;
-            const local = tabla.find(t => t.id === partido.equipo_local_id);
-            const visit = tabla.find(t => t.id === partido.equipo_visitante_id);
+            const local = tabla.find(t => t.equipo.id === partido.equipo_local_id);
+            const visit = tabla.find(t => t.equipo.id === partido.equipo_visitante_id);
             if (prono.goles_local > prono.goles_visitante) local.puntos += 3;
             else if (prono.goles_local < prono.goles_visitante) visit.puntos += 3;
             else { local.puntos += 1; visit.puntos += 1; }
@@ -700,7 +694,7 @@ async function renderSimulacionUsuario() {
         tabla.sort((a,b) => b.puntos - a.puntos || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
         const primeros = tabla.slice(0,2);
         primeros.forEach(eq => {
-            html += `<li>Grupo ${g}: ${getEquipoConBandera(eq.nombre)} (${eq.puntos} pts)</li>`;
+            html += `<li>Grupo ${g}: ${getEquipoConBandera(eq.equipo)} (${eq.puntos} pts)</li>`;
         });
     }
     mejoresTerceros.forEach(t => {
