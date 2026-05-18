@@ -39,7 +39,7 @@ async function cargarPartidos() {
 function normalizarNombreParaBandera(nombre) {
     return nombre.toLowerCase()
         .replace(/ /g, '_')
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // elimina acentos
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function getBanderaHtml(nombre) {
@@ -56,13 +56,6 @@ function getNombreEquipo(id) {
     return eq ? eq.nombre : '?';
 }
 
-function getNombreEquipoConBandera(id) {
-    const nombre = getNombreEquipo(id);
-    return nombre !== '?' ? getEquipoConBandera(nombre) : nombre;
-}
-
-// -------------------------------------------------
-
 function limpiarCacheNavegador() {
     localStorage.clear();
     sessionStorage.clear();
@@ -77,15 +70,12 @@ async function mostrarBienvenida() {
     const { data, error } = await _supabase.from('configuracion').select('valor').eq('clave', 'reglas_puntuacion').maybeSingle();
     if (!error && data) reglasTexto = data.valor;
 
-    // Configura tus imágenes si las tienes, o usa el ícono por defecto
-    const usarImagenes = false; // Cambia a true si subiste imágenes a la carpeta assets
+    const usarImagenes = false;
     const fondoUrl = usarImagenes ? 'assets/fondo-mundial.jpg' : '';
     const logoUrl = usarImagenes ? 'assets/logo-mundial.png' : '';
-
     const backgroundStyle = usarImagenes
         ? `background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}'); background-size: cover; background-position: center;`
         : 'background: linear-gradient(135deg, #0b2b1f 0%, #1a4a2f 100%);';
-
     const logoHtml = usarImagenes
         ? `<img src="${logoUrl}" alt="Logo Mundial" class="welcome-logo">`
         : `<i class="fas fa-futbol" style="font-size: 4rem; color: #f5c542; margin-bottom: 1rem;"></i>`;
@@ -249,12 +239,14 @@ async function mostrarDashboard() {
             <div class="tabs">
                 <button class="tab-btn active" data-tab="grupos"><i class="fas fa-users"></i> Grupos</button>
                 <button class="tab-btn" data-tab="partidos"><i class="fas fa-calendar-alt"></i> Pronósticos</button>
+                <button class="tab-btn" data-tab="simulacion"><i class="fas fa-chart-simple"></i> Simulación</button>
                 <button class="tab-btn" data-tab="goleador"><i class="fas fa-futbol"></i> Goleador</button>
                 ${currentUserRol === 'admin' ? '<button class="tab-btn" data-tab="admin"><i class="fas fa-cogs"></i> Admin</button>' : ''}
             </div>
             <div class="tab-content">
                 <div id="grupos" class="tab-pane active"></div>
                 <div id="partidos" class="tab-pane"></div>
+                <div id="simulacion" class="tab-pane"></div>
                 <div id="goleador" class="tab-pane"></div>
                 <div id="admin" class="tab-pane"></div>
             </div>
@@ -263,6 +255,7 @@ async function mostrarDashboard() {
 
     await renderGrupos();
     await renderPartidos();
+    await renderSimulacionUsuario();
     renderGoleador(yaVotoGoleador, nombreGoleador);
     if (currentUserRol === 'admin') renderAdmin();
 
@@ -282,7 +275,7 @@ async function mostrarDashboard() {
     };
 }
 
-// ==================== PESTAÑA GRUPOS ====================
+// ==================== PESTAÑA GRUPOS (resultados reales) ====================
 async function renderGrupos() {
     const container = document.getElementById('grupos');
     const grupos = ['A','B','C','D','E','F','G','H','I','J','K','L'];
@@ -317,11 +310,10 @@ async function renderGrupos() {
             stats.push({ nombre: eq.nombre, pj, pg, pe, pp, gf, gc, dif, puntos });
         }
         stats.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
-        html += `<div class="card-grupo"><h3>Grupo ${g}</h3><table class="tabla-posiciones"><thead><tr><th>Bandera</th><th>Equipo</th><th>JJ</th><th>JG</th><th>JE</th><th>JP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
+        html += `<div class="card-grupo"><h3>Grupo ${g}</h3><table class="tabla-posiciones"><thead><tr><th>Equipo</th><th>JJ</th><th>JG</th><th>JE</th><th>JP</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
         stats.forEach(s => {
             html += `<tr>
-                        <td>${getBanderaHtml(s.nombre)}</td>
-                        <td>${s.nombre}</td>
+                        <td>${getEquipoConBandera(s.nombre)}</td>
                         <td>${s.pj}</td><td>${s.pg}</td><td>${s.pe}</td><td>${s.pp}</td>
                         <td>${s.gf}</td><td>${s.gc}</td><td>${s.dif}</td>
                         <td><b>${s.puntos}</b></td>
@@ -336,7 +328,6 @@ async function renderGrupos() {
     document.getElementById('btnMejoresTerceros').onclick = () => mostrarMejoresTerceros();
 }
 
-// Modal de partidos por grupo (admin puede cargar resultados)
 async function mostrarPartidosPorGrupo() {
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
     const grupos = [...new Set(partidosGrupo.map(p => {
@@ -602,6 +593,121 @@ async function generarCardPartidoHorizontal(partido) {
             </div>
         </div>
     `;
+}
+
+// ==================== SIMULACIÓN DE GRUPOS SEGÚN PRONÓSTICOS ====================
+async function renderSimulacionUsuario() {
+    const container = document.getElementById('simulacion');
+    if (!container) return;
+
+    const { data: pronosticos, error } = await _supabase.from('pronosticos_partidos')
+        .select('*, partidos:partido_id(fase, equipo_local_id, equipo_visitante_id)')
+        .eq('usuario_id', currentUser.id);
+    if (error) {
+        container.innerHTML = '<p>Error al cargar pronósticos.</p>';
+        return;
+    }
+
+    const pronosGrupos = pronosticos.filter(p => p.partidos?.fase === 'grupos');
+    if (pronosGrupos.length === 0) {
+        container.innerHTML = '<p>No has realizado pronósticos para la fase de grupos. Ve a la pestaña "Pronósticos" y predice los resultados.</p>';
+        return;
+    }
+
+    const grupos = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+    let html = `<div class="simulacion-container"><h3>📊 Simulación de grupos según tus pronósticos</h3>
+                <p>Los equipos en <span style="background:#d4edda; padding:2px 4px;">verde</span> clasifican directamente a 16vos. Los 8 mejores terceros aparecen en <span style="background:#fff3cd;">amarillo</span>.</p>`;
+    
+    let todosTerceros = [];
+
+    for (let g of grupos) {
+        const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
+        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && 
+            equiposGrupo.some(eq => eq.id === p.equipo_local_id) &&
+            equiposGrupo.some(eq => eq.id === p.equipo_visitante_id));
+        
+        let tabla = equiposGrupo.map(eq => ({ id: eq.id, nombre: eq.nombre, puntos: 0, gf: 0, gc: 0, pj: 0 }));
+        for (let partido of partidosGrupo) {
+            const prono = pronosGrupos.find(pr => pr.partido_id === partido.id);
+            if (!prono) continue;
+            const local = tabla.find(t => t.id === partido.equipo_local_id);
+            const visit = tabla.find(t => t.id === partido.equipo_visitante_id);
+            const gLocal = prono.goles_local;
+            const gVisit = prono.goles_visitante;
+            if (gLocal > gVisit) local.puntos += 3;
+            else if (gLocal < gVisit) visit.puntos += 3;
+            else { local.puntos += 1; visit.puntos += 1; }
+            local.gf += gLocal; local.gc += gVisit;
+            visit.gf += gVisit; visit.gc += gLocal;
+            local.pj++; visit.pj++;
+        }
+        // Ordenar
+        tabla.sort((a,b) => b.puntos - a.puntos || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
+        if (tabla.length >= 3) {
+            const tercero = tabla[2];
+            todosTerceros.push({ grupo: g, equipo: tercero.nombre, puntos: tercero.puntos, dif: tercero.gf - tercero.gc, gf: tercero.gf });
+        }
+        let tablaHtml = `<table class="simulacion-tabla"><thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
+        tabla.forEach((eq, idx) => {
+            const clasificado = (idx === 0 || idx === 1);
+            const clase = clasificado ? 'fila-clasificado' : 'fila-no-clasificado';
+            const ganados = Math.floor(eq.puntos / 3);
+            const empatados = eq.puntos % 3 === 1 ? 1 : 0;
+            const perdidos = eq.pj - ganados - empatados;
+            tablaHtml += `<tr class="${clase}">
+                <td>${getEquipoConBandera(eq.nombre)}</td>
+                <td>${eq.pj}</td>
+                <td>${ganados}</td>
+                <td>${empatados}</td>
+                <td>${perdidos}</td>
+                <td>${eq.gf}</td>
+                <td>${eq.gc}</td>
+                <td>${eq.gf - eq.gc}</td>
+                <td><b>${eq.puntos}</b></td>
+            </tr>`;
+        });
+        tablaHtml += `</tbody></table>`;
+        html += `<div class="simulacion-grupo"><h4>Grupo ${g}</h4>${tablaHtml}</div>`;
+    }
+
+    // Ordenar terceros y elegir los 8 mejores
+    todosTerceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
+    const mejoresTerceros = todosTerceros.slice(0,8);
+    html += `<div class="lista-terceros"><h4>🏆 Los 8 mejores terceros (según tus pronósticos)</h4><ul>`;
+    mejoresTerceros.forEach(t => {
+        html += `<li class="resaltado-tercero"><strong>Grupo ${t.grupo}:</strong> ${getEquipoConBandera(t.equipo)} - ${t.puntos} pts, DG: ${t.dif}</li>`;
+    });
+    html += `</ul></div>`;
+
+    // Lista de equipos clasificados a 16vos
+    html += `<div class="lista-terceros"><h4>✅ Equipos que avanzarían a 16vos de final</h4><ul>`;
+    for (let g of grupos) {
+        const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
+        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && 
+            equiposGrupo.some(eq => eq.id === p.equipo_local_id));
+        let tabla = equiposGrupo.map(eq => ({ id: eq.id, nombre: eq.nombre, puntos: 0, gf: 0, gc: 0 }));
+        for (let partido of partidosGrupo) {
+            const prono = pronosGrupos.find(pr => pr.partido_id === partido.id);
+            if (!prono) continue;
+            const local = tabla.find(t => t.id === partido.equipo_local_id);
+            const visit = tabla.find(t => t.id === partido.equipo_visitante_id);
+            if (prono.goles_local > prono.goles_visitante) local.puntos += 3;
+            else if (prono.goles_local < prono.goles_visitante) visit.puntos += 3;
+            else { local.puntos += 1; visit.puntos += 1; }
+            local.gf += prono.goles_local; local.gc += prono.goles_visitante;
+            visit.gf += prono.goles_visitante; visit.gc += prono.goles_local;
+        }
+        tabla.sort((a,b) => b.puntos - a.puntos || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
+        const primeros = tabla.slice(0,2);
+        primeros.forEach(eq => {
+            html += `<li>Grupo ${g}: ${getEquipoConBandera(eq.nombre)} (${eq.puntos} pts)</li>`;
+        });
+    }
+    mejoresTerceros.forEach(t => {
+        html += `<li>Mejor tercero Grupo ${t.grupo}: ${getEquipoConBandera(t.equipo)} (${t.puntos} pts)</li>`;
+    });
+    html += `</ul></div>`;
+    container.innerHTML = html;
 }
 
 // ==================== GOLEADOR ====================
