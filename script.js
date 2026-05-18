@@ -482,7 +482,7 @@ async function mostrarMejoresTerceros() {
         if (stats[2]) terceros.push({ grupo: g, equipo: stats[2].nombre, puntos: stats[2].puntos, dif: stats[2].dif, gf: stats[2].gf });
     }
     terceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
-    const mejores8 = terceros.slice(0,8);
+    const mejores8 = terceros.slice(0,12);
     const modalHtml = `
         <div class="modal-overlay" id="modalTerceros">
             <div class="modal-content" style="max-width: 600px; padding:1rem;">
@@ -672,7 +672,7 @@ async function renderSimulacionUsuario() {
 
     // Ordenar terceros y elegir los 8 mejores
     todosTerceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
-    const mejoresTerceros = todosTerceros.slice(0,8);
+    const mejoresTerceros = todosTerceros.slice(0,12);
     html += `<div class="lista-terceros"><h4>🏆 Los 8 mejores terceros (según tus pronósticos)</h4><ul>`;
     mejoresTerceros.forEach(t => {
         html += `<li class="resaltado-tercero"><strong>Grupo ${t.grupo}:</strong> ${getEquipoConBandera(t.equipo)} - ${t.puntos} pts, DG: ${t.dif}</li>`;
