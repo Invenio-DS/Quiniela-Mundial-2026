@@ -65,8 +65,8 @@ async function mostrarBienvenida() {
     if (!error && data) reglasTexto = data.valor;
 
     const usarImagenes = false;
-    const fondoUrl = usarImagenes ? 'assets/fondo-mundial.jpg' : '';
-    const logoUrl = usarImagenes ? 'assets/logo-mundial.png' : '';
+    const fondoUrl = usarImagenes ? 'assets/fondo_mundial_2026.jpg' : '';
+    const logoUrl = usarImagenes ? 'assets/logo_mundial_2_2026.jpg' : '';
     const backgroundStyle = usarImagenes
         ? `background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}'); background-size: cover; background-position: center;`
         : 'background: linear-gradient(135deg, #0b2b1f 0%, #1a4a2f 100%);';
@@ -77,7 +77,7 @@ async function mostrarBienvenida() {
     document.getElementById('contenido').innerHTML = `
         <div class="welcome-container" style="${backgroundStyle}">
             ${logoHtml}
-            <h1 class="welcome-title">🏆 Quiniela Mundial 2026</h1>
+            <h1 class="welcome-title">🏆 Quiniela Mundial de Futbol USA-MEX-CAN 2026</h1>
             <p class="welcome-title" style="font-size:1.2rem;">Pronostica y gana</p>
             <button id="btnContinuar" style="background:#f5c542; border:none; padding:12px 32px; border-radius:40px; font-weight:bold; margin-top:2rem;">Continuar →</button>
         </div>
@@ -222,7 +222,7 @@ async function mostrarDashboard() {
     document.getElementById('contenido').innerHTML = `
         <div class="container">
             <div class="header">
-                <div class="logo"><h1>⚽ Mundial 2026 <span>Quiniela</span></h1></div>
+                <div class="logo"><h1>⚽ Mundial de Futbol 2026 <span>Quiniela</span></h1></div>
                 <div class="user-info">
                     <i class="fas fa-user"></i> ${currentUser.email} 
                     <i class="fas fa-trophy"></i> Puntos: ${currentUserPuntos}
