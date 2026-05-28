@@ -41,7 +41,6 @@ input, select {
     font-size: 0.9rem;
 }
 
-/* Bandera en línea */
 .flag-icon {
     width: 24px;
     height: 18px;
@@ -58,7 +57,6 @@ input, select {
     white-space: nowrap;
 }
 
-/* ==================== HEADER Y TABS ==================== */
 .header {
     background: #0a2a1f;
     color: white;
@@ -135,7 +133,6 @@ input, select {
     display: block;
 }
 
-/* ==================== GRUPOS (RESULTADOS REALES) ==================== */
 .grupos-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
@@ -171,25 +168,22 @@ input, select {
     text-align: left;
 }
 
-/* Resaltados para grupos */
 .fila-clasificado-directo {
-    background-color: #d4edda !important;  /* verde claro para 1º y 2º */
+    background-color: #d4edda !important;
 }
 .fila-opcion-tercero {
-    background-color: #fff3cd !important;  /* amarillo ocre para 3er lugar */
+    background-color: #fff3cd !important;
 }
 .fila-normal {
     background-color: #ffffff;
 }
 
-/* ==================== PARTIDOS (PRONÓSTICOS Y ADMIN) ==================== */
 .partidos-lista {
     display: flex;
     flex-direction: column;
     gap: 16px;
 }
 
-/* Tarjeta de partido rediseñada */
 .partido-card {
     background: #f8fafc;
     border-radius: 20px;
@@ -197,6 +191,7 @@ input, select {
     border: 1px solid #e2e8f0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
+
 .partido-header {
     font-size: 0.85rem;
     color: #0a5c2e;
@@ -205,6 +200,7 @@ input, select {
     border-bottom: 1px dashed #ccc;
     padding-bottom: 5px;
 }
+
 .partido-cuerpo {
     display: flex;
     flex-wrap: wrap;
@@ -213,6 +209,7 @@ input, select {
     gap: 12px;
     margin-bottom: 12px;
 }
+
 .equipo-local, .equipo-visitante {
     display: flex;
     align-items: center;
@@ -220,15 +217,18 @@ input, select {
     font-weight: 600;
     min-width: 140px;
 }
+
 .marcador-inputs {
     display: flex;
     gap: 10px;
     align-items: center;
 }
+
 .marcador-inputs input {
     width: 70px;
     text-align: center;
 }
+
 .resultado-info {
     font-size: 0.8rem;
     color: #555;
@@ -239,6 +239,7 @@ input, select {
     flex-wrap: wrap;
     gap: 10px;
 }
+
 .btn-guardar {
     background: #f5c542;
     border: none;
@@ -246,17 +247,15 @@ input, select {
     border-radius: 30px;
     font-weight: bold;
 }
+
 .btn-guardar:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
-.estado-partido {
-    font-weight: bold;
-}
+
 .estado-sin-jugar { color: #d9534f; }
 .estado-terminado { color: #5cb85c; }
 
-/* Responsive */
 @media (max-width: 768px) {
     .partido-cuerpo {
         flex-direction: column;
@@ -274,7 +273,6 @@ input, select {
     }
 }
 
-/* ==================== SIMULACIÓN ==================== */
 .simulacion-container {
     margin-top: 20px;
 }
@@ -305,13 +303,11 @@ input, select {
     border-radius: 8px;
 }
 
-/* ==================== GOLEADOR ==================== */
 .goleador-area {
     text-align: center;
     padding: 20px;
 }
 
-/* ==================== MODALES ==================== */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -337,7 +333,6 @@ input, select {
     min-height: 200px;
 }
 
-/* ==================== BRACKET ELIMINATORIAS ==================== */
 .bracket-container {
     overflow-x: auto;
     padding: 20px;
@@ -394,7 +389,6 @@ input, select {
     }
 }
 
-/* ==================== PANTALLA DE BIENVENIDA ==================== */
 .welcome-container {
     min-height: 80vh;
     width: 100%;
@@ -449,7 +443,6 @@ input, select {
     padding: 1.5rem;
 }
 
-/* ==================== RESPONSIVE ==================== */
 @media (max-width: 768px) {
     body {
         padding: 10px;
