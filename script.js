@@ -35,6 +35,7 @@ async function cargarPartidos() {
     return data;
 }
 
+// Bandera usando URL de la tabla
 function getBanderaHtml(nombreEquipo) {
     const equipo = equiposCache.find(eq => eq.nombre === nombreEquipo);
     if (!equipo || !equipo.bandera_url) return '';
@@ -65,8 +66,8 @@ async function mostrarBienvenida() {
     if (!error && data) reglasTexto = data.valor;
 
     const usarImagenes = false;
-    const fondoUrl = usarImagenes ? 'assets/fondo_mundial_2026.jpg' : '';
-    const logoUrl = usarImagenes ? 'assets/logo_mundial_2_2026.jpg' : '';
+    const fondoUrl = usarImagenes ? 'assets/fondo-mundial.jpg' : '';
+    const logoUrl = usarImagenes ? 'assets/logo-mundial.png' : '';
     const backgroundStyle = usarImagenes
         ? `background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}'); background-size: cover; background-position: center;`
         : 'background: linear-gradient(135deg, #0b2b1f 0%, #1a4a2f 100%);';
@@ -77,7 +78,7 @@ async function mostrarBienvenida() {
     document.getElementById('contenido').innerHTML = `
         <div class="welcome-container" style="${backgroundStyle}">
             ${logoHtml}
-            <h1 class="welcome-title">🏆 Quiniela Mundial de Futbol USA-MEX-CAN 2026</h1>
+            <h1 class="welcome-title">🏆 Quiniela Mundial 2026</h1>
             <p class="welcome-title" style="font-size:1.2rem;">Pronostica y gana</p>
             <button id="btnContinuar" style="background:#f5c542; border:none; padding:12px 32px; border-radius:40px; font-weight:bold; margin-top:2rem;">Continuar →</button>
         </div>
@@ -125,11 +126,8 @@ function mostrarReglas(reglasTexto) {
     modalOverlay.appendChild(modalContent);
     document.body.appendChild(modalOverlay);
     const closeBtn = document.getElementById('cerrarModalReglasBtn');
-    if (closeBtn) {
-        closeBtn.onclick = () => modalOverlay.remove();
-    } else {
-        modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
-    }
+    if (closeBtn) closeBtn.onclick = () => modalOverlay.remove();
+    else modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
 }
 
 function mostrarLogin() {
@@ -222,7 +220,7 @@ async function mostrarDashboard() {
     document.getElementById('contenido').innerHTML = `
         <div class="container">
             <div class="header">
-                <div class="logo"><h1>⚽ Mundial de Futbol 2026 <span>Quiniela</span></h1></div>
+                <div class="logo"><h1>⚽ Mundial 2026 <span>Quiniela</span></h1></div>
                 <div class="user-info">
                     <i class="fas fa-user"></i> ${currentUser.email} 
                     <i class="fas fa-trophy"></i> Puntos: ${currentUserPuntos}
@@ -268,7 +266,7 @@ async function mostrarDashboard() {
     };
 }
 
-// ==================== PESTAÑA GRUPOS ====================
+// ==================== PESTAÑA GRUPOS (RESULTADOS REALES) ====================
 async function renderGrupos() {
     const container = document.getElementById('grupos');
     const grupos = ['A','B','C','D','E','F','G','H','I','J','K','L'];
@@ -313,7 +311,7 @@ async function renderGrupos() {
                         <td>${s.pj}</td><td>${s.pg}</td><td>${s.pe}</td><td>${s.pp}</td>
                         <td>${s.gf}</td><td>${s.gc}</td><td>${s.dif}</td>
                         <td><b>${s.puntos}</b></td>
-                    </td>`;
+                    </tr>`;
         });
         html += `</tbody></table></div>`;
     }
@@ -324,14 +322,13 @@ async function renderGrupos() {
     document.getElementById('btnMejoresTerceros').onclick = () => mostrarMejoresTerceros(true);
 }
 
-// MODAL DE PARTIDOS POR GRUPO (CORREGIDO: FILTRA POR GRUPO DE AMBOS EQUIPOS)
+// MODAL DE PARTIDOS POR GRUPO (VERSIÓN ESTABLE - SIN FILTRO ESTRICTO)
 async function mostrarPartidosPorGrupo() {
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
+    // Agrupar por grupo del equipo local (asumiendo que todos los partidos son válidos)
     const grupos = [...new Set(partidosGrupo.map(p => {
         const local = equiposCache.find(e => e.id === p.equipo_local_id);
-        const visit = equiposCache.find(e => e.id === p.equipo_visitante_id);
-        if (local && visit && local.grupo === visit.grupo) return local.grupo;
-        return null;
+        return local ? local.grupo : null;
     }).filter(g => g))].sort();
 
     const modal = document.createElement('div');
@@ -357,8 +354,7 @@ async function mostrarPartidosPorGrupo() {
         for (let g of grupos) {
             const partidosG = partidosActualizados.filter(p => {
                 const local = equiposCache.find(e => e.id === p.equipo_local_id);
-                const visit = equiposCache.find(e => e.id === p.equipo_visitante_id);
-                return local && visit && local.grupo === g && visit.grupo === g;
+                return local && local.grupo === g;
             }).sort((a,b) => a.numero - b.numero);
             html += `<div style="margin-bottom: 1.5rem;">
                         <h4 style="background:#0a5c2e; color:white; padding:8px 12px; border-radius:20px; display:inline-block;">Grupo ${g}</h4>
@@ -412,8 +408,9 @@ async function mostrarPartidosPorGrupo() {
                         estado: 'finalizado'
                     }).eq('id', pid);
                     if (error) {
-                        msgSpan.innerText = '❌ Error';
+                        msgSpan.innerText = '❌ Error: ' + error.message;
                         msgSpan.style.color = 'red';
+                        console.error(error);
                     } else {
                         msgSpan.innerText = '✅ Guardado';
                         msgSpan.style.color = 'green';
@@ -473,7 +470,7 @@ async function mostrarMejoresTerceros(esReal = true) {
                     <button id="cerrarModalTerceros" style="background:#c00; color:white; border:none; border-radius:50%; width:32px;">✕</button>
                 </div>
                 <table class="simulacion-tabla">
-                    <thead><tr><th>Pos</th><th>Grupo</th><th>Equipo</th><th>Pts</th><th>DG</th><th>GF</th></td></thead>
+                    <thead><tr><th>Pos</th><th>Grupo</th><th>Equipo</th><th>Pts</th><th>DG</th><th>GF</th></tr></thead>
                     <tbody>
                         ${todos.map((t,idx) => {
                             const clase = idx < 8 ? 'resaltado-tercero' : '';
@@ -606,7 +603,7 @@ async function generarCardPartidoPronostico(partido) {
     `;
 }
 
-// SIMULACIÓN DE GRUPOS (CORREGIDO: solo partidos dentro del mismo grupo)
+// Simulación de grupos
 async function mostrarSimulacionGrupos() {
     const { data: pronosticos, error } = await _supabase.from('pronosticos_partidos')
         .select('*, partidos:partido_id(fase, equipo_local_id, equipo_visitante_id)')
@@ -626,9 +623,7 @@ async function mostrarSimulacionGrupos() {
     let todosTerceros = [];
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
-        const idsEquipos = equiposGrupo.map(eq => eq.id);
-        // Solo partidos donde ambos equipos pertenezcan a este grupo
-        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && idsEquipos.includes(p.equipo_local_id) && idsEquipos.includes(p.equipo_visitante_id));
+        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && equiposGrupo.some(eq => eq.id === p.equipo_local_id));
         let tabla = equiposGrupo.map(eq => ({ nombre: eq.nombre, puntos: 0, gf: 0, gc: 0, pj: 0 }));
         for (let partido of partidosGrupo) {
             const prono = pronosGrupos.find(pr => pr.partido_id === partido.id);
@@ -654,10 +649,14 @@ async function mostrarSimulacionGrupos() {
             tablaHtml += `<tr class="${clase}">
                 <td>${getEquipoConBandera(eq.nombre)}</td>
                 <td>${eq.pj}</td>
-                <td>${Math.floor(eq.puntos/3)}</td><td>${eq.puntos%3===1?1:0}</td><td>${eq.pj - Math.floor(eq.puntos/3) - (eq.puntos%3===1?1:0)}</td>
-                <td>${eq.gf}</td><td>${eq.gc}</td><td>${eq.gf - eq.gc}</td>
+                <td>${Math.floor(eq.puntos/3)}</td>
+                <td>${eq.puntos%3===1?1:0}</td>
+                <td>${eq.pj - Math.floor(eq.puntos/3) - (eq.puntos%3===1?1:0)}</td>
+                <td>${eq.gf}</td>
+                <td>${eq.gc}</td>
+                <td>${eq.gf - eq.gc}</td>
                 <td><b>${eq.puntos}</b></td>
-            </tr>`;
+            </table>`;
         });
         tablaHtml += `</tbody></table>`;
         html += `<div class="simulacion-grupo"><h4>Grupo ${g}</h4>${tablaHtml}</div>`;
@@ -670,12 +669,10 @@ async function mostrarSimulacionGrupos() {
         html += `<li class="${clase}"><strong>Grupo ${t.grupo}:</strong> ${getEquipoConBandera(t.equipo)} - ${t.puntos} pts, DG: ${t.dif}</li>`;
     });
     html += `</ul></div>`;
-    // Clasificados
     html += `<div class="lista-terceros"><h4>✅ Equipos que avanzarían a 16vos de final</h4><ul>`;
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
-        const idsEquipos = equiposGrupo.map(eq => eq.id);
-        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && idsEquipos.includes(p.equipo_local_id) && idsEquipos.includes(p.equipo_visitante_id));
+        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && equiposGrupo.some(eq => eq.id === p.equipo_local_id));
         let tabla = equiposGrupo.map(eq => ({ nombre: eq.nombre, puntos: 0, gf:0, gc:0 }));
         for (let partido of partidosGrupo) {
             const prono = pronosGrupos.find(pr => pr.partido_id === partido.id);
@@ -718,8 +715,7 @@ async function mostrarSimulacionTerceros() {
     let terceros = [];
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
-        const idsEquipos = equiposGrupo.map(eq => eq.id);
-        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && idsEquipos.includes(p.equipo_local_id) && idsEquipos.includes(p.equipo_visitante_id));
+        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && equiposGrupo.some(eq => eq.id === p.equipo_local_id));
         let stats = [];
         for (let eq of equiposGrupo) {
             let puntos=0, gf=0, gc=0;
