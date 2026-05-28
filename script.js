@@ -35,7 +35,6 @@ async function cargarPartidos() {
     return data;
 }
 
-// ---------- Funciones para banderas (usando URL de la tabla) ----------
 function getBanderaHtml(nombreEquipo) {
     const equipo = equiposCache.find(eq => eq.nombre === nombreEquipo);
     if (!equipo || !equipo.bandera_url) return '';
@@ -247,11 +246,10 @@ async function mostrarDashboard() {
     `;
 
     await renderGrupos();
-    await renderPartidos();  // pestaña pronósticos
-    await renderEliminatorias(); // pestaña eliminatorias
+    await renderPartidos();
+    await renderEliminatorias();
     if (currentUserRol === 'admin') renderAdmin();
 
-    // Eventos pestañas
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
@@ -270,7 +268,7 @@ async function mostrarDashboard() {
     };
 }
 
-// ==================== PESTAÑA GRUPOS (resultados reales con resaltados) ====================
+// ==================== PESTAÑA GRUPOS ====================
 async function renderGrupos() {
     const container = document.getElementById('grupos');
     const grupos = ['A','B','C','D','E','F','G','H','I','J','K','L'];
@@ -315,7 +313,7 @@ async function renderGrupos() {
                         <td>${s.pj}</td><td>${s.pg}</td><td>${s.pe}</td><td>${s.pp}</td>
                         <td>${s.gf}</td><td>${s.gc}</td><td>${s.dif}</td>
                         <td><b>${s.puntos}</b></td>
-                    </tr>`;
+                    </td>`;
         });
         html += `</tbody></table></div>`;
     }
@@ -326,12 +324,14 @@ async function renderGrupos() {
     document.getElementById('btnMejoresTerceros').onclick = () => mostrarMejoresTerceros(true);
 }
 
-// Modal de partidos por grupo (admin puede cargar resultados) - SIN PENALES
+// MODAL DE PARTIDOS POR GRUPO (CORREGIDO: FILTRA POR GRUPO DE AMBOS EQUIPOS)
 async function mostrarPartidosPorGrupo() {
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
     const grupos = [...new Set(partidosGrupo.map(p => {
         const local = equiposCache.find(e => e.id === p.equipo_local_id);
-        return local ? local.grupo : null;
+        const visit = equiposCache.find(e => e.id === p.equipo_visitante_id);
+        if (local && visit && local.grupo === visit.grupo) return local.grupo;
+        return null;
     }).filter(g => g))].sort();
 
     const modal = document.createElement('div');
@@ -357,7 +357,8 @@ async function mostrarPartidosPorGrupo() {
         for (let g of grupos) {
             const partidosG = partidosActualizados.filter(p => {
                 const local = equiposCache.find(e => e.id === p.equipo_local_id);
-                return local && local.grupo === g;
+                const visit = equiposCache.find(e => e.id === p.equipo_visitante_id);
+                return local && visit && local.grupo === g && visit.grupo === g;
             }).sort((a,b) => a.numero - b.numero);
             html += `<div style="margin-bottom: 1.5rem;">
                         <h4 style="background:#0a5c2e; color:white; padding:8px 12px; border-radius:20px; display:inline-block;">Grupo ${g}</h4>
@@ -472,7 +473,7 @@ async function mostrarMejoresTerceros(esReal = true) {
                     <button id="cerrarModalTerceros" style="background:#c00; color:white; border:none; border-radius:50%; width:32px;">✕</button>
                 </div>
                 <table class="simulacion-tabla">
-                    <thead><tr><th>Pos</th><th>Grupo</th><th>Equipo</th><th>Pts</th><th>DG</th><th>GF</th></tr></thead>
+                    <thead><tr><th>Pos</th><th>Grupo</th><th>Equipo</th><th>Pts</th><th>DG</th><th>GF</th></td></thead>
                     <tbody>
                         ${todos.map((t,idx) => {
                             const clase = idx < 8 ? 'resaltado-tercero' : '';
@@ -605,7 +606,7 @@ async function generarCardPartidoPronostico(partido) {
     `;
 }
 
-// Simulación de grupos basada en pronósticos del usuario
+// SIMULACIÓN DE GRUPOS (CORREGIDO: solo partidos dentro del mismo grupo)
 async function mostrarSimulacionGrupos() {
     const { data: pronosticos, error } = await _supabase.from('pronosticos_partidos')
         .select('*, partidos:partido_id(fase, equipo_local_id, equipo_visitante_id)')
@@ -625,7 +626,9 @@ async function mostrarSimulacionGrupos() {
     let todosTerceros = [];
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
-        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && equiposGrupo.some(eq => eq.id === p.equipo_local_id));
+        const idsEquipos = equiposGrupo.map(eq => eq.id);
+        // Solo partidos donde ambos equipos pertenezcan a este grupo
+        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && idsEquipos.includes(p.equipo_local_id) && idsEquipos.includes(p.equipo_visitante_id));
         let tabla = equiposGrupo.map(eq => ({ nombre: eq.nombre, puntos: 0, gf: 0, gc: 0, pj: 0 }));
         for (let partido of partidosGrupo) {
             const prono = pronosGrupos.find(pr => pr.partido_id === partido.id);
@@ -643,15 +646,18 @@ async function mostrarSimulacionGrupos() {
         if (tabla.length >= 3) {
             todosTerceros.push({ grupo: g, equipo: tabla[2].nombre, puntos: tabla[2].puntos, dif: tabla[2].gf - tabla[2].gc, gf: tabla[2].gf });
         }
-        let tablaHtml = `<table class="simulacion-tabla"><thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></td></thead><tbody>`;
+        let tablaHtml = `<table class="simulacion-tabla"><thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
         tabla.forEach((eq, idx) => {
             let clase = '';
             if (idx === 0 || idx === 1) clase = 'fila-clasificado-directo';
             else if (idx === 2) clase = 'fila-opcion-tercero';
-            tablaHtml += `<tr class="${clase}">`;
-            tablaHtml += `<td>${getEquipoConBandera(eq.nombre)}</td>`;
-            tablaHtml += `<td>${eq.pj}</td><td>${Math.floor(eq.puntos/3)}</td><td>${eq.puntos%3===1?1:0}</td><td>${eq.pj - Math.floor(eq.puntos/3) - (eq.puntos%3===1?1:0)}</td>`;
-            tablaHtml += `<td>${eq.gf}</td><td>${eq.gc}</td><td>${eq.gf - eq.gc}</td><td><b>${eq.puntos}</b></td></tr>`;
+            tablaHtml += `<tr class="${clase}">
+                <td>${getEquipoConBandera(eq.nombre)}</td>
+                <td>${eq.pj}</td>
+                <td>${Math.floor(eq.puntos/3)}</td><td>${eq.puntos%3===1?1:0}</td><td>${eq.pj - Math.floor(eq.puntos/3) - (eq.puntos%3===1?1:0)}</td>
+                <td>${eq.gf}</td><td>${eq.gc}</td><td>${eq.gf - eq.gc}</td>
+                <td><b>${eq.puntos}</b></td>
+            </tr>`;
         });
         tablaHtml += `</tbody></table>`;
         html += `<div class="simulacion-grupo"><h4>Grupo ${g}</h4>${tablaHtml}</div>`;
@@ -668,7 +674,8 @@ async function mostrarSimulacionGrupos() {
     html += `<div class="lista-terceros"><h4>✅ Equipos que avanzarían a 16vos de final</h4><ul>`;
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
-        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && equiposGrupo.some(eq => eq.id === p.equipo_local_id));
+        const idsEquipos = equiposGrupo.map(eq => eq.id);
+        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && idsEquipos.includes(p.equipo_local_id) && idsEquipos.includes(p.equipo_visitante_id));
         let tabla = equiposGrupo.map(eq => ({ nombre: eq.nombre, puntos: 0, gf:0, gc:0 }));
         for (let partido of partidosGrupo) {
             const prono = pronosGrupos.find(pr => pr.partido_id === partido.id);
@@ -711,7 +718,8 @@ async function mostrarSimulacionTerceros() {
     let terceros = [];
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
-        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && equiposGrupo.some(eq => eq.id === p.equipo_local_id));
+        const idsEquipos = equiposGrupo.map(eq => eq.id);
+        const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && idsEquipos.includes(p.equipo_local_id) && idsEquipos.includes(p.equipo_visitante_id));
         let stats = [];
         for (let eq of equiposGrupo) {
             let puntos=0, gf=0, gc=0;
