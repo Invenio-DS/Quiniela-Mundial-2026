@@ -161,7 +161,7 @@ input, select {
 .tabla-posiciones th,
 .tabla-posiciones td {
     padding: 6px 4px;
-    text-align: left;  /* Cambiado a left para alinear a la izquierda */
+    text-align: left;
     border-bottom: 1px solid #ddd;
     vertical-align: middle;
 }
@@ -330,8 +330,68 @@ input, select {
     border-radius: 24px;
     max-width: 90vw;
     max-height: 85vh;
-    overflow-y: auto;
+    overflow: auto;
     padding: 1rem;
+    resize: both;
+    min-width: 300px;
+    min-height: 200px;
+}
+
+/* ==================== BRACKET ELIMINATORIAS ==================== */
+.bracket-container {
+    overflow-x: auto;
+    padding: 20px;
+}
+.bracket {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: nowrap;
+    min-width: fit-content;
+}
+.bracket-round {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 220px;
+}
+.bracket-match {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 12px;
+    border-left: 4px solid #f5c542;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-size: 0.8rem;
+}
+.bracket-match .equipos {
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.bracket-match .resultado {
+    text-align: center;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: #555;
+}
+.bracket-match .fecha {
+    font-size: 0.7rem;
+    color: #777;
+    text-align: center;
+    margin-top: 4px;
+}
+@media (max-width: 768px) {
+    .bracket {
+        flex-direction: column;
+        gap: 20px;
+    }
+    .bracket-round {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
 }
 
 /* ==================== PANTALLA DE BIENVENIDA ==================== */
