@@ -234,11 +234,13 @@ async function mostrarDashboard() {
             <div class="tabs">
                 <button class="tab-btn active" data-tab="grupos"><i class="fas fa-users"></i> Grupos</button>
                 <button class="tab-btn" data-tab="partidos"><i class="fas fa-calendar-alt"></i> Pronósticos</button>
+                <button class="tab-btn" data-tab="eliminatorias"><i class="fas fa-diagram-project"></i> Eliminatorias</button>
                 <button class="tab-btn" data-tab="admin" style="display:${currentUserRol === 'admin' ? 'inline-flex' : 'none'}"><i class="fas fa-cogs"></i> Admin</button>
             </div>
             <div class="tab-content">
                 <div id="grupos" class="tab-pane active"></div>
                 <div id="partidos" class="tab-pane"></div>
+                <div id="eliminatorias" class="tab-pane"></div>
                 <div id="admin" class="tab-pane"></div>
             </div>
         </div>
@@ -246,6 +248,7 @@ async function mostrarDashboard() {
 
     await renderGrupos();
     await renderPartidos();  // pestaña pronósticos
+    await renderEliminatorias(); // pestaña eliminatorias
     if (currentUserRol === 'admin') renderAdmin();
 
     // Eventos pestañas
@@ -255,8 +258,8 @@ async function mostrarDashboard() {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(btn.dataset.tab).classList.add('active');
             btn.classList.add('active');
-            // Si es la pestaña pronósticos, refrescar para garantizar botones (por si cambió algo)
             if (btn.dataset.tab === 'partidos') renderPartidos();
+            if (btn.dataset.tab === 'eliminatorias') renderEliminatorias();
         });
     });
     document.getElementById('btnRankingGlobal').onclick = mostrarRanking;
@@ -323,7 +326,7 @@ async function renderGrupos() {
     document.getElementById('btnMejoresTerceros').onclick = () => mostrarMejoresTerceros(true);
 }
 
-// Modal de partidos por grupo (admin puede cargar resultados) - no se modifica estéticamente, solo funcional
+// Modal de partidos por grupo (admin puede cargar resultados) - SIN PENALES
 async function mostrarPartidosPorGrupo() {
     const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos');
     const grupos = [...new Set(partidosGrupo.map(p => {
@@ -379,13 +382,6 @@ async function mostrarPartidosPorGrupo() {
                             </div>`;
                 if (currentUserRol === 'admin') {
                     tarjeta += `<div style="margin-top:5px;">
-                                    <label><input type="checkbox" id="penales_check_${p.id}" ${p.ganador_penaltis_real !== null ? 'checked' : ''}> ¿Penales?</label>
-                                    <div id="div_ganador_${p.id}" style="${p.ganador_penaltis_real !== null ? '' : 'display:none;'} margin-top:5px;">
-                                        <select id="ganador_${p.id}">
-                                            <option value="local" ${p.ganador_penaltis_real === true ? 'selected' : ''}>Ganó Local</option>
-                                            <option value="visitante" ${p.ganador_penaltis_real === false ? 'selected' : ''}>Ganó Visitante</option>
-                                        </select>
-                                    </div>
                                     <button class="guardar-resultado-admin" data-id="${p.id}" style="background:#f5c542; border:none; border-radius:30px; padding:6px 16px; margin-top:8px;">Guardar resultado</button>
                                     <span class="msg-guardado-${p.id}" style="font-size:0.7rem; margin-left:8px;"></span>
                                 </div>`;
@@ -399,15 +395,6 @@ async function mostrarPartidosPorGrupo() {
         modalContenido.innerHTML = html;
 
         if (currentUserRol === 'admin') {
-            document.querySelectorAll('#modalPartidosContenido input[type="checkbox"]').forEach(cb => {
-                const idPartido = cb.id.split('_')[2];
-                const divGanador = document.getElementById(`div_ganador_${idPartido}`);
-                cb.addEventListener('change', () => {
-                    if (cb.checked) divGanador.style.display = 'block';
-                    else divGanador.style.display = 'none';
-                });
-            });
-
             document.querySelectorAll('.guardar-resultado-admin').forEach(btn => {
                 btn.onclick = async (e) => {
                     const pid = parseInt(btn.dataset.id);
@@ -418,16 +405,9 @@ async function mostrarPartidosPorGrupo() {
                         alert("Ingresa números válidos");
                         return;
                     }
-                    const penales = document.getElementById(`penales_check_${pid}`).checked;
-                    let ganadorPenales = null;
-                    if (penales) {
-                        const select = document.getElementById(`ganador_${pid}`);
-                        ganadorPenales = (select.value === 'local');
-                    }
                     const { error } = await _supabase.from('partidos').update({
                         goles_local_real: localReal,
                         goles_visitante_real: visitReal,
-                        ganador_penaltis_real: penales ? ganadorPenales : null,
                         estado: 'finalizado'
                     }).eq('id', pid);
                     if (error) {
@@ -452,13 +432,10 @@ async function mostrarPartidosPorGrupo() {
 }
 
 async function mostrarMejoresTerceros(esReal = true) {
-    // esReal = true: basado en resultados reales; false: basado en pronósticos del usuario (se usará desde simulación)
     let partidosBase;
     if (esReal) {
         partidosBase = partidosCache.filter(p => p.fase === 'grupos' && p.goles_local_real !== null && p.goles_visitante_real !== null);
     } else {
-        // Para simulación, se calculará aparte. Por ahora solo usamos la versión real.
-        // La función específica para simulación se maneja en renderSimulacionUsuario.
         partidosBase = [];
     }
     const grupos = ['A','B','C','D','E','F','G','H','I','J','K','L'];
@@ -486,8 +463,7 @@ async function mostrarMejoresTerceros(esReal = true) {
         if (stats[2]) terceros.push({ grupo: g, equipo: stats[2].nombre, puntos: stats[2].puntos, dif: stats[2].dif, gf: stats[2].gf });
     }
     terceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
-    const mejores8 = terceros.slice(0,8);
-    const todos = terceros; // 12 equipos
+    const todos = terceros;
     const modalHtml = `
         <div class="modal-overlay" id="modalTerceros">
             <div class="modal-content" style="max-width: 600px; padding:1rem;">
@@ -512,10 +488,9 @@ async function mostrarMejoresTerceros(esReal = true) {
     document.getElementById('cerrarModalTerceros').onclick = () => document.getElementById('modalTerceros').remove();
 }
 
-// ==================== PESTAÑA PRONÓSTICOS (con rediseño completo) ====================
+// ==================== PESTAÑA PRONÓSTICOS ====================
 async function renderPartidos() {
     const container = document.getElementById('partidos');
-    // Agrupar partidos en jornadas
     const gruposJornadas = [
         { fase: 'grupos', jornada: 1, titulo: '📅 Fase de Grupos - Jornada 1', numeros: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24] },
         { fase: 'grupos', jornada: 2, titulo: '📅 Fase de Grupos - Jornada 2', numeros: [25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48] },
@@ -550,7 +525,6 @@ async function renderPartidos() {
     }
     container.innerHTML = html;
 
-    // Asignar eventos a botones de guardar pronóstico
     document.querySelectorAll('.btn-guardar-prono').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const partidoId = parseInt(btn.dataset.partidoId);
@@ -575,13 +549,11 @@ async function renderPartidos() {
             if (error) alert("Error al guardar: " + error.message);
             else {
                 alert("Pronóstico guardado");
-                // Recargar la pestaña para mostrar inputs deshabilitados si corresponde
                 await renderPartidos();
             }
         });
     });
 
-    // Botones de simulación y goleador
     document.getElementById('btnSimularGrupos').onclick = () => mostrarSimulacionGrupos();
     document.getElementById('btnSimularTerceros').onclick = () => mostrarSimulacionTerceros();
     document.getElementById('btnAbrirGoleador').onclick = () => mostrarModalGoleador();
@@ -603,9 +575,8 @@ async function generarCardPartidoPronostico(partido) {
     const ahora = new Date();
     const fechaPartido = new Date(partido.fecha_hora);
     const diffHoras = (fechaPartido - ahora) / (1000*60*60);
-    const puedeEditar = diffHoras > 24; // más de 24h restantes
+    const puedeEditar = diffHoras > 24;
     const deshabilitado = !puedeEditar || (partido.estado === 'finalizado');
-    // Determinar si mostrar checkbox penales: solo a partir de 16vos
     const mostrarPenales = (partido.fase !== 'grupos');
     const estadoTexto = partido.estado === 'finalizado' ? 'Terminado' : (fechaPartido < ahora ? 'En curso / Finalizado' : 'Sin jugar');
     const estadoClase = partido.estado === 'finalizado' ? 'estado-terminado' : 'estado-sin-jugar';
@@ -672,7 +643,7 @@ async function mostrarSimulacionGrupos() {
         if (tabla.length >= 3) {
             todosTerceros.push({ grupo: g, equipo: tabla[2].nombre, puntos: tabla[2].puntos, dif: tabla[2].gf - tabla[2].gc, gf: tabla[2].gf });
         }
-        let tablaHtml = `<table class="simulacion-tabla"><thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></tr></thead><tbody>`;
+        let tablaHtml = `<table class="simulacion-tabla"><thead><tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th><th>Pts</th></td></thead><tbody>`;
         tabla.forEach((eq, idx) => {
             let clase = '';
             if (idx === 0 || idx === 1) clase = 'fila-clasificado-directo';
@@ -685,7 +656,6 @@ async function mostrarSimulacionGrupos() {
         tablaHtml += `</tbody></table>`;
         html += `<div class="simulacion-grupo"><h4>Grupo ${g}</h4>${tablaHtml}</div>`;
     }
-    // Mejores 8 terceros
     todosTerceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
     const mejores8 = todosTerceros.slice(0,8);
     html += `<div class="lista-terceros"><h4>🏆 Los 8 mejores terceros (según tus pronósticos)</h4><ul>`;
@@ -696,7 +666,6 @@ async function mostrarSimulacionGrupos() {
     html += `</ul></div>`;
     // Clasificados
     html += `<div class="lista-terceros"><h4>✅ Equipos que avanzarían a 16vos de final</h4><ul>`;
-    // 1ros y 2dos de cada grupo
     for (let g of grupos) {
         const equiposGrupo = equiposCache.filter(eq => eq.grupo === g);
         const partidosGrupo = partidosCache.filter(p => p.fase === 'grupos' && equiposGrupo.some(eq => eq.id === p.equipo_local_id));
@@ -730,7 +699,6 @@ async function mostrarSimulacionGrupos() {
 }
 
 async function mostrarSimulacionTerceros() {
-    // similar a mostrarMejoresTerceros pero con pronósticos del usuario
     const { data: pronosticos } = await _supabase.from('pronosticos_partidos')
         .select('*, partidos:partido_id(fase, equipo_local_id, equipo_visitante_id)')
         .eq('usuario_id', currentUser.id);
@@ -767,7 +735,6 @@ async function mostrarSimulacionTerceros() {
     }
     terceros.sort((a,b) => b.puntos - a.puntos || b.dif - a.dif || b.gf - a.gf);
     const todos = terceros;
-    const mejores8 = todos.slice(0,8);
     const modalHtml = `
         <div class="modal-overlay" id="modalSimulacionTerceros">
             <div class="modal-content" style="max-width: 600px; padding:1rem;">
@@ -789,7 +756,6 @@ async function mostrarSimulacionTerceros() {
 }
 
 function mostrarModalGoleador() {
-    // Verificar si ya eligió
     _supabase.from('pronosticos_goleador').select('jugador_nombre').eq('usuario_id', currentUser.id).maybeSingle()
         .then(({ data }) => {
             if (data) {
@@ -805,6 +771,71 @@ function mostrarModalGoleador() {
                     });
             }
         });
+}
+
+// ==================== PESTAÑA ELIMINATORIAS (BRACKET) ====================
+async function renderEliminatorias() {
+    const container = document.getElementById('eliminatorias');
+    container.innerHTML = `
+        <div style="margin-bottom:20px;">
+            <button id="btnBracketReal" class="btn-ranking">Resultados reales</button>
+            <button id="btnBracketPronostico" class="btn-ranking">Mi pronóstico</button>
+        </div>
+        <div id="bracketContent"></div>
+    `;
+    const bracketDiv = document.getElementById('bracketContent');
+    
+    async function cargarBracket(esReal) {
+        let partidosElim = partidosCache.filter(p => p.fase !== 'grupos');
+        if (!esReal) {
+            const { data: pronosticos } = await _supabase.from('pronosticos_partidos')
+                .select('*').eq('usuario_id', currentUser.id);
+            const pronoMap = new Map();
+            pronosticos.forEach(p => pronoMap.set(p.partido_id, p));
+            partidosElim = partidosElim.map(p => {
+                const prono = pronoMap.get(p.id);
+                if (prono) {
+                    return {
+                        ...p,
+                        goles_local_real: prono.goles_local,
+                        goles_visitante_real: prono.goles_visitante,
+                        ganador_penaltis_real: prono.penaltis ? true : null,
+                        estado: 'finalizado'
+                    };
+                }
+                return p;
+            });
+        }
+        const fasesOrden = ['16vos', '8vos', '4tos', 'semis', 'tercero', 'final'];
+        let html = `<div class="bracket-container"><div class="bracket">`;
+        for (let fase of fasesOrden) {
+            const partidosFase = partidosElim.filter(p => p.fase === fase).sort((a,b) => a.numero - b.numero);
+            if (partidosFase.length === 0) continue;
+            html += `<div class="bracket-round"><h4 style="text-align:center;">${fase.toUpperCase()}</h4>`;
+            partidosFase.forEach(p => {
+                const local = p.equipo_local_id ? getNombreEquipo(p.equipo_local_id) : '?';
+                const visit = p.equipo_visitante_id ? getNombreEquipo(p.equipo_visitante_id) : '?';
+                const resultado = (p.goles_local_real !== null && p.goles_visitante_real !== null) ? `${p.goles_local_real} - ${p.goles_visitante_real}` : 'Sin jugar';
+                const fecha = new Date(p.fecha_hora).toLocaleString();
+                html += `<div class="bracket-match">
+                            <div class="equipos">
+                                <span>${getEquipoConBandera(local)}</span>
+                                <span>vs</span>
+                                <span>${getEquipoConBandera(visit)}</span>
+                            </div>
+                            <div class="resultado">${resultado}</div>
+                            <div class="fecha">${fecha}</div>
+                        </div>`;
+            });
+            html += `</div>`;
+        }
+        html += `</div></div>`;
+        bracketDiv.innerHTML = html;
+    }
+    
+    document.getElementById('btnBracketReal').onclick = () => cargarBracket(true);
+    document.getElementById('btnBracketPronostico').onclick = () => cargarBracket(false);
+    cargarBracket(true);
 }
 
 // ==================== ADMIN ====================
