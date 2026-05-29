@@ -66,8 +66,8 @@ async function mostrarBienvenida() {
     if (!error && data) reglasTexto = data.valor;
 
     const usarImagenes = false;
-    const fondoUrl = usarImagenes ? 'assets/fondo_mundial_2026.jpg' : '';
-    const logoUrl = usarImagenes ? 'assets/logo_mundial_2_2026.jpg' : '';
+    const fondoUrl = usarImagenes ? 'https://github.com/Invenio-DS/Quiniela-Mundial-2026/assets/fondo_mundial_2026.jpg' : '';
+    const logoUrl = usarImagenes ? 'https://github.com/Invenio-DS/Quiniela-Mundial-2026/assets/logo_mundial_2_2026.jpg' : '';
     const backgroundStyle = usarImagenes
         ? `background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('${fondoUrl}'); background-size: cover; background-position: center;`
         : 'background: linear-gradient(135deg, #0b2b1f 0%, #1a4a2f 100%);';
